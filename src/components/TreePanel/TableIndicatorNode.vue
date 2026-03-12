@@ -41,12 +41,26 @@ watch(
   { immediate: true }
 )
 
+// const tableColumns = computed(() => { 
+//   const cols = new Set<string>() 
+//     for (const sub of props.task.sub_indicators) 
+//     { Object.keys(sub.values).forEach((k) => cols.add(k)) } 
+//     return Array.from(cols) 
+//   })
+
 const tableColumns = computed(() => {
-  const cols = new Set<string>()
-  for (const sub of props.task.sub_indicators) {
-    Object.keys(sub.values).forEach((k) => cols.add(k))
-  }
-  return Array.from(cols)
+  if (!props.task.sub_indicators.length) return []
+
+  const firstSubIndicator = props.task.sub_indicators[0]
+  if (!firstSubIndicator?.values) return []
+
+  const keys = Object.keys(firstSubIndicator.values)
+
+  const itemIndex = keys.indexOf('Item')
+  if (itemIndex === -1) return keys
+
+  const item = keys.splice(itemIndex, 1)
+  return [...item, ...keys]
 })
 
 function onMouseEnter() {
