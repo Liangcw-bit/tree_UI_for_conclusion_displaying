@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useBackend } from '../composables/useBackend'
 
 const props = defineProps<{
   companyId: string
   initialStructure?: any | null
+  uploadLogs?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -12,17 +13,21 @@ const emit = defineEmits<{
   questionComplete: [payload: { intermediate: any; conclusion: any; logs?: string[] }]
 }>()
 
-const { get, postJson, buildUrl } = useBackend()
+const { get, postJsonWithSignal, buildUrl } = useBackend()
 
 const structure = ref<any | null>(props.initialStructure ?? null)
 const loadingStructure = ref(false)
 const error = ref<string | null>(null)
 
 const activePillarName = ref<string | null>(null)
+const hoveredPillarName = ref<string | null>(null)
+
+const hoveredIndicatorIndex = ref<number | null>(null)
 
 const question = ref('')
 const asking = ref(false)
 const askLogs = ref<string[]>([])
+const qaController = ref<AbortController | null>(null)
 
 const pdfUrl = computed(() => {
   if (!structure.value || !structure.value.pdf_url) return null
@@ -40,6 +45,88 @@ const indicatorsForActivePillar = computed(() => {
 })
 
 const hasQuestionResult = ref(false)
+
+// 静态示例：当输入 0~4 时，直接从前端 public/data* 目录加载对应的中间结果与结论 JSON
+const DEMO_FILES: Record<
+  number,
+  {
+    intermediate: string
+    conclusion: string
+    label: string
+  }
+> = {
+  0: {
+    intermediate: '/data/final_qed_with_retrieval_meta.json',
+    conclusion: '/data/final_conclusion_meta_labeled.json',
+    label: 'Meta 示例',
+  },
+  1: {
+    intermediate: '/data_1/final_qed_with_retrieval_apple.json',
+    conclusion: '/data_1/final_conclusion_apple_labeled.json',
+    label: 'Apple 示例',
+  },
+  2: {
+    intermediate: '/data_2/final_qed_with_retrieval_microsoft.json',
+    conclusion: '/data_2/final_conclusion_microsoft_labeled.json',
+    label: 'Microsoft 示例 A',
+  },
+  3: {
+    intermediate: '/data_3/final_qed_with_retrieval_microsoft.json',
+    conclusion: '/data_3/final_conclusion_microsoft_labeled.json',
+    label: 'Microsoft 示例 B',
+  },
+  4: {
+    intermediate: '/data_4/final_qed_with_retrieval.json',
+    conclusion: '/data_4/final_conclusion_labeled.json',
+    label: '通用示例',
+  },
+}
+
+const uploadLogsComputed = computed(() => props.uploadLogs ?? [])
+const showPipelineStatus = computed(
+  () => uploadLogsComputed.value.length > 0 || askLogs.value.length > 0 || asking.value,
+)
+const qaProgressPercent = computed(() => {
+  if (asking.value) return 60
+  if (askLogs.value.length > 0) return 100
+  return 0
+})
+
+type LogLevel = 'info' | 'stage' | 'error'
+
+function classifyLog(line: string): LogLevel {
+  const lower = line.toLowerCase()
+  if (lower.includes('processing pillar') || lower.includes('[processing pillar')) return 'stage'
+  if (lower.includes('error') || lower.includes('failed') || lower.includes('exception')) return 'error'
+  return 'info'
+}
+
+const qaLogItems = computed(() =>
+  askLogs.value.map((line) => ({
+    text: line,
+    level: classifyLog(line),
+  })),
+)
+
+const uploadLogItems = computed(() =>
+  uploadLogsComputed.value.map((line) => ({
+    text: line,
+    level: classifyLog(line),
+  })),
+)
+
+const qaLogListRef = ref<HTMLElement | null>(null)
+
+watch(
+  () => askLogs.value.length,
+  async () => {
+    await nextTick()
+    const el = qaLogListRef.value
+    if (el) {
+      el.scrollTop = el.scrollHeight
+    }
+  },
+)
 
 async function loadStructureIfNeeded() {
   if (structure.value) return
@@ -88,16 +175,69 @@ watch(
 async function sendQuestion() {
   const text = question.value.trim()
   if (!text || asking.value) return
+
+  // 如果是 0~4 的快捷键，走前端静态示例逻辑：
+  // 直接从 public/data* 目录加载对应的 final_qed_with_retrieval + final_conclusion JSON
+  if (/^[0-4]$/.test(text)) {
+    const idx = Number(text)
+    const files = DEMO_FILES[idx]
+    if (!files) return
+
+    asking.value = true
+    error.value = null
+    askLogs.value = [
+      `前端静态示例：捕获到快捷键 ${idx}（${files.label}），从 ${files.intermediate} 与 ${files.conclusion} 读取结果。`,
+    ]
+    hasQuestionResult.value = false
+
+    try {
+      const [intermediate, conclusion] = await Promise.all([
+        fetch(files.intermediate).then((r) => {
+          if (!r.ok) throw new Error(`加载 ${files.intermediate} 失败`)
+          return r.json()
+        }),
+        fetch(files.conclusion).then((r) => {
+          if (!r.ok) throw new Error(`加载 ${files.conclusion} 失败`)
+          return r.json()
+        }),
+      ])
+
+      hasQuestionResult.value = true
+      emit('questionComplete', {
+        intermediate,
+        conclusion,
+        logs: askLogs.value,
+      })
+    } catch (e: any) {
+      error.value = e?.message || '加载示例结果失败'
+    } finally {
+      asking.value = false
+    }
+
+    return
+  }
   asking.value = true
   error.value = null
   askLogs.value = []
   hasQuestionResult.value = false
 
+  // 如果之前有未完成的请求，先中止
+  if (qaController.value) {
+    qaController.value.abort()
+  }
+
+  const controller = new AbortController()
+  qaController.value = controller
+
   try {
-    const res = await postJson<any>('/api/qa', {
-      company_id: props.companyId,
-      question: text,
-    })
+    const res = await postJsonWithSignal<any>(
+      '/api/qa',
+      {
+        company_id: props.companyId,
+        question: text,
+      },
+      controller.signal,
+    )
     askLogs.value = res.logs || []
     hasQuestionResult.value = true
     emit('questionComplete', {
@@ -106,10 +246,33 @@ async function sendQuestion() {
       logs: res.logs,
     })
   } catch (e: any) {
-    error.value = e?.message || '问答管线执行失败'
+    if (e?.name === 'AbortError') {
+      // 主动取消时不认为是错误
+      console.log('[document-view] QA request aborted')
+    } else {
+      error.value = e?.message || '问答管线执行失败'
+    }
   } finally {
     asking.value = false
   }
+}
+
+function handleBack() {
+  // 如果有在进行的问答请求，主动取消
+  if (qaController.value) {
+    qaController.value.abort()
+    qaController.value = null
+  }
+  asking.value = false
+  emit('back')
+}
+
+function handlePillarHover(name: string | null) {
+  hoveredPillarName.value = name
+}
+
+function handleIndicatorHover(index: number | null) {
+  hoveredIndicatorIndex.value = index
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -123,7 +286,7 @@ function handleKeydown(e: KeyboardEvent) {
 <template>
   <section class="doc-view">
     <div class="toolbar">
-      <button type="button" class="ghost-button" @click="emit('back')">
+      <button type="button" class="ghost-button" @click="handleBack">
         ← 返回选择
       </button>
       <div class="toolbar-right">
@@ -165,8 +328,10 @@ function handleKeydown(e: KeyboardEvent) {
               :key="p.pillar_name"
               type="button"
               class="pillar-item"
-              :class="{ active: p.pillar_name === activePillarName }"
+              :class="{ active: p.pillar_name === activePillarName, hovered: p.pillar_name === hoveredPillarName }"
               @click="activePillarName = p.pillar_name"
+              @mouseenter="handlePillarHover(p.pillar_name)"
+              @mouseleave="handlePillarHover(null)"
             >
               <div class="pillar-name">{{ p.pillar_name }}</div>
               <div class="pillar-def">{{ p.definition }}</div>
@@ -186,6 +351,9 @@ function handleKeydown(e: KeyboardEvent) {
                 v-for="(ind, i) in indicatorsForActivePillar"
                 :key="i"
                 class="indicator-item"
+                :class="{ hovered: i === hoveredIndicatorIndex }"
+                @mouseenter="handleIndicatorHover(i as number)"
+                @mouseleave="handleIndicatorHover(null)"
               >
                 <div class="indicator-name">{{ ind.indicator_name }}</div>
                 <div class="indicator-meta">
@@ -201,6 +369,49 @@ function handleKeydown(e: KeyboardEvent) {
             <p v-else class="hint-text">
               该 Pillar 下暂未匹配到文本 indicator，或仅包含表格型指标。
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showPipelineStatus" class="pipeline-status">
+        <div class="pipeline-header">
+          <div class="pipeline-title">处理进度</div>
+          <div class="pipeline-bar">
+            <div
+              class="pipeline-bar-inner"
+              :class="{ indeterminate: asking }"
+              :style="!asking ? { width: qaProgressPercent + '%' } : {}"
+            />
+          </div>
+        </div>
+        <div class="pipeline-logs">
+          <div v-if="uploadLogsComputed.length" class="log-block">
+            <h4 class="log-title">上传 / 预处理日志</h4>
+            <ul class="log-list">
+              <li
+                v-for="(item, i) in uploadLogItems"
+                :key="'u-' + i"
+                class="log-line"
+                :class="item.level"
+              >
+                <span class="log-dot" />
+                <span class="log-text">{{ item.text }}</span>
+              </li>
+            </ul>
+          </div>
+          <div v-if="askLogs.length" class="log-block">
+            <h4 class="log-title">问答管线日志</h4>
+            <ul ref="qaLogListRef" class="log-list">
+              <li
+                v-for="(item, i) in qaLogItems"
+                :key="'q-' + i"
+                class="log-line"
+                :class="item.level"
+              >
+                <span class="log-dot" />
+                <span class="log-text">{{ item.text }}</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -221,7 +432,7 @@ function handleKeydown(e: KeyboardEvent) {
             v-model="question"
             class="qa-input"
             rows="2"
-            placeholder="例如：Which is more critical for Amazon’s 2026 outlook?..."
+            placeholder="例如：总结本公司未来三年的关键增长驱动，并分点分析主要风险。按 Enter 发送，Shift+Enter 换行。输入 0~4 可直接查看不同公司的示例结果。"
             @keydown="handleKeydown"
           />
           <button
@@ -232,12 +443,6 @@ function handleKeydown(e: KeyboardEvent) {
           >
             {{ asking ? '思考中…' : '发送问题' }}
           </button>
-        </div>
-        <div v-if="askLogs.length" class="log-panel">
-          <h4 class="log-title">后端执行日志</h4>
-          <ul class="log-list">
-            <li v-for="(line, i) in askLogs" :key="i">{{ line }}</li>
-          </ul>
         </div>
         <p v-if="error" class="error-text">{{ error }}</p>
       </div>
@@ -294,6 +499,8 @@ function handleKeydown(e: KeyboardEvent) {
 
 .ghost-button:hover {
   background: var(--color-bg-hover);
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
 }
 
 .primary-button {
@@ -309,6 +516,15 @@ function handleKeydown(e: KeyboardEvent) {
 .primary-button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.primary-button:not(:disabled) {
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.primary-button:not(:disabled):hover {
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.28);
+  transform: translateY(-0.5px);
 }
 
 .content {
@@ -337,6 +553,7 @@ function handleKeydown(e: KeyboardEvent) {
   min-width: 0;
   min-height: 0;
   height: 100%;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
 
 .panel-title {
@@ -381,11 +598,18 @@ function handleKeydown(e: KeyboardEvent) {
   text-align: left;
   background: var(--color-bg-muted);
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
 }
 
 .pillar-item.active {
   border-color: var(--color-primary);
   background: var(--color-accent-light);
+  transform: translateY(-1px);
+}
+
+.pillar-item.hovered:not(.active) {
+  border-color: var(--color-accent);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
 }
 
 .pillar-name {
@@ -418,6 +642,7 @@ function handleKeydown(e: KeyboardEvent) {
   border: 1px solid var(--color-border);
   padding: 0.4rem 0.5rem;
   background: var(--color-bg-muted);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
 }
 
 .indicator-name {
@@ -438,10 +663,113 @@ function handleKeydown(e: KeyboardEvent) {
   font-size: 0.8rem;
 }
 
+.indicator-item.hovered {
+  border-color: var(--color-primary);
+  background: var(--color-accent-light);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.2);
+  transform: translateY(-1px);
+}
+
+.pipeline-status {
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  padding: 0.45rem 0.85rem 0.6rem;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.pipeline-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.pipeline-bar {
+  flex: 1;
+  margin-left: 1rem;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.pipeline-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.pipeline-bar-inner.indeterminate {
+  width: 40%;
+  animation: pipeline-indeterminate 1s ease-in-out infinite;
+}
+
+.pipeline-logs {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.log-block {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  background: var(--color-bg-muted);
+  padding: 0.45rem 0.6rem;
+}
+
+.log-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.log-list {
+  margin: 0;
+  padding-left: 1rem;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.log-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+}
+
+.log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: 0.3rem;
+  background: var(--color-text-muted);
+}
+
+.log-line.stage .log-dot {
+  background: var(--color-primary);
+}
+
+.log-line.error .log-dot {
+  background: #dc2626;
+}
+
+.log-text {
+  white-space: pre-wrap;
+}
+
 .qa-panel {
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-panel);
-  padding: 0.65rem 0.85rem 0.85rem;
+  padding: 0.85rem 1rem 1rem;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.14);
 }
 
 .qa-header {
@@ -470,36 +798,31 @@ function handleKeydown(e: KeyboardEvent) {
   font-size: 0.9rem;
   resize: vertical;
   min-height: 2.2rem;
+  background: var(--color-bg-muted);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.qa-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary), 0 8px 20px rgba(37, 99, 235, 0.25);
+  background: #ffffff;
 }
 
 .send-button {
   align-self: stretch;
 }
 
-.log-panel {
-  margin-top: 0.6rem;
-  border-radius: 8px;
-  background: var(--color-bg-muted);
-  padding: 0.5rem 0.6rem;
-}
-
-.log-title {
-  margin: 0 0 0.35rem;
-  font-size: 0.85rem;
-}
-
-.log-list {
-  margin: 0;
-  padding-left: 1rem;
-  max-height: 120px;
-  overflow-y: auto;
-  font-size: 0.8rem;
-}
-
 .hint-text {
   margin: 0;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+.demo-text {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-accent);
 }
 
 .error-text {
@@ -537,6 +860,18 @@ function handleKeydown(e: KeyboardEvent) {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pipeline-indeterminate {
+  0% {
+    transform: translateX(-50%);
+  }
+  50% {
+    transform: translateX(20%);
+  }
+  100% {
+    transform: translateX(120%);
   }
 }
 </style>

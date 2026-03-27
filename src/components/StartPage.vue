@@ -8,7 +8,7 @@ interface CompanyItem {
 }
 
 const emit = defineEmits<{
-  ready: [payload: { companyId: string; structure: any }]
+  ready: [payload: { companyId: string; structure: any; uploadLogs?: string[] }]
 }>()
 
 const { get, postJson, buildUrl } = useBackend()
@@ -84,7 +84,11 @@ async function handleFileChange(event: Event) {
     }
 
     const data = await res.json()
-    emit('ready', { companyId: data.company_id, structure: data.structure })
+    emit('ready', {
+      companyId: data.company_id,
+      structure: data.structure,
+      uploadLogs: data.logs ?? [],
+    })
   } catch (e: any) {
     error.value = e?.message || '上传或预处理失败'
   } finally {
@@ -97,10 +101,15 @@ async function handleFileChange(event: Event) {
 <template>
   <section class="start-page">
     <div class="start-card">
-      <h2 class="title">选择分析文档</h2>
-      <p class="subtitle">
-        可以从已有缓存公司中选择，也可以上传新的财报 PDF 进行端到端处理。
-      </p>
+      <div class="card-header">
+        <div class="badge">STEP 1</div>
+        <div>
+          <h2 class="title">选择分析文档</h2>
+          <p class="subtitle">
+            从已有缓存公司直接进入分析，或上传新的财报 PDF，一键跑完整多阶段管线。
+          </p>
+        </div>
+      </div>
 
       <div class="split-layout">
         <div class="panel">
@@ -169,34 +178,52 @@ async function handleFileChange(event: Event) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 2.2rem 1.5rem 2.6rem;
 }
 
 .start-card {
-  max-width: 960px;
+  max-width: 1040px;
   width: 100%;
   background: var(--color-bg-panel);
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid var(--color-border);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
-  padding: 1.75rem 2rem 2rem;
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.18);
+  padding: 1.9rem 2.2rem 2.2rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1.6rem;
+}
+
+.badge {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-accent-light);
+  color: var(--color-primary);
+  border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 .title {
-  margin: 0 0 0.35rem;
-  font-size: 1.35rem;
+  margin: 0 0 0.4rem;
+  font-size: 1.45rem;
 }
 
 .subtitle {
-  margin: 0 0 1.5rem;
-  font-size: 0.9rem;
+  margin: 0 0 1.6rem;
+  font-size: 0.92rem;
   color: var(--color-text-muted);
 }
 
 .split-layout {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 1.5rem;
+  gap: 1.75rem;
   align-items: stretch;
 }
 
@@ -208,7 +235,7 @@ async function handleFileChange(event: Event) {
 
 .panel-desc {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   color: var(--color-text-muted);
 }
 
@@ -222,10 +249,16 @@ async function handleFileChange(event: Event) {
 .company-pill {
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  padding: 0.35rem 0.9rem;
-  font-size: 0.85rem;
+  padding: 0.38rem 0.95rem;
+  font-size: 0.86rem;
   background: var(--color-bg-muted);
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.company-pill:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
 }
 
 .company-pill.active {
@@ -238,7 +271,7 @@ async function handleFileChange(event: Event) {
 .secondary-button {
   border-radius: 999px;
   border: none;
-  padding: 0.45rem 1.1rem;
+  padding: 0.48rem 1.15rem;
   font-size: 0.9rem;
   cursor: pointer;
   align-self: flex-start;
@@ -252,6 +285,15 @@ async function handleFileChange(event: Event) {
 .primary-button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.primary-button:not(:disabled) {
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.primary-button:not(:disabled):hover {
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.28);
+  transform: translateY(-1px);
 }
 
 .secondary-button {

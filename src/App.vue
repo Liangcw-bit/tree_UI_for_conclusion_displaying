@@ -11,6 +11,7 @@ type Step = 'select' | 'document' | 'result'
 const currentStep = ref<Step>('select')
 const selectedCompanyId = ref<string | null>(null)
 const documentStructure = ref<any | null>(null)
+const uploadLogs = ref<string[]>([])
 
 const qaIntermediate = ref<IntermediateResult | null>(null)
 const qaConclusion = ref<FinalConclusion | null>(null)
@@ -29,9 +30,23 @@ const stepIndex = computed(() => {
   }
 })
 
-function handleCompanyReady(payload: { companyId: string; structure: any }) {
+const progressPercent = computed(() => {
+  switch (currentStep.value) {
+    case 'select':
+      return 33
+    case 'document':
+      return 66
+    case 'result':
+      return 100
+    default:
+      return 0
+  }
+})
+
+function handleCompanyReady(payload: { companyId: string; structure: any; uploadLogs?: string[] }) {
   selectedCompanyId.value = payload.companyId
   documentStructure.value = payload.structure
+   uploadLogs.value = payload.uploadLogs ?? []
   currentStep.value = 'document'
 }
 
@@ -82,6 +97,14 @@ function backToStart() {
           <span class="step-label">问答与推理结果</span>
         </div>
       </div>
+      <div class="header-progress">
+        <div class="header-progress-track">
+          <div
+            class="header-progress-bar"
+            :style="{ width: progressPercent + '%' }"
+          />
+        </div>
+      </div>
     </header>
 
     <main class="app-main">
@@ -94,6 +117,7 @@ function backToStart() {
         v-else-if="currentStep === 'document' && selectedCompanyId"
         :company-id="selectedCompanyId"
         :initial-structure="documentStructure"
+        :upload-logs="uploadLogs"
         @back="backToStart"
         @question-complete="handleQuestionComplete"
       />
@@ -125,9 +149,12 @@ function backToStart() {
 }
 
 .app-header {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.5rem 1.4rem;
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-panel);
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 55%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 50%),
+    rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -142,7 +169,7 @@ function backToStart() {
 
 .app-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
@@ -175,6 +202,7 @@ function backToStart() {
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
+  background: #ffffff;
 }
 
 .step-label {
@@ -199,6 +227,29 @@ function backToStart() {
 
 .step-line.active {
   background: var(--color-primary);
+}
+
+.header-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 1.5rem 0.25rem;
+}
+
+.header-progress-track {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.header-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 .app-main {

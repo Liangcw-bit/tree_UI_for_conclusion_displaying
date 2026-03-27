@@ -38,6 +38,30 @@ export function useBackend() {
     return (await res.json()) as T
   }
 
+  async function postJsonWithSignal<T = any>(
+    path: string,
+    body: any,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    lastError.value = null
+    const url = baseUrl + path
+    console.log('[backend:post]', url, body, '(with signal)')
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal,
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      lastError.value = text || res.statusText
+      throw new Error(lastError.value)
+    }
+    return (await res.json()) as T
+  }
+
   function buildUrl(path: string): string {
     return baseUrl + path
   }
@@ -47,6 +71,7 @@ export function useBackend() {
     lastError,
     get,
     postJson,
+    postJsonWithSignal,
     buildUrl,
   }
 }

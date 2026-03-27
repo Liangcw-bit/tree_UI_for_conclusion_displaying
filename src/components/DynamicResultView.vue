@@ -89,8 +89,8 @@ function handleTreeIndicatorUnhover() {
 <style scoped>
 .result-view {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: 100%;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  height: calc(100vh - 72px);
   background: var(--color-bg);
 }
 
