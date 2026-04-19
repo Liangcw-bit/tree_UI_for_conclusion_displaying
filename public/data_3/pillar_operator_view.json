@@ -1,0 +1,774 @@
+{
+  "original_question": "What factors drive Amazon’s revenue growth across different segments?",
+  "operator_results": [
+    {
+      "pillar": "Strategic Business Segmentation and Market Ecosystem",
+      "operators": {
+        "causal_anchoring": [
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:Net sales",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "North America Net Sales",
+              "comparison": "2023 to 2025"
+            },
+            "trend_or_claim_sentence": "North America net sales increased from $352.8 billion in 2023 to $426.3 billion in 2025, reflecting steady expansion in the domestic retail ecosystem.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Focus on selection, price, and convenience for consumers",
+                "source_hint": "text_b5"
+              },
+              {
+                "cause_clause": "Growth in advertising services such as sponsored ads and video",
+                "source_hint": "text_b5"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:AWS - Net sales",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "AWS Net Sales",
+              "comparison": "2023 to 2025"
+            },
+            "trend_or_claim_sentence": "AWS revenue grew significantly from $90.8 billion in 2023 to $128.7 billion in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Increased demand for compute, storage, and artificial intelligence services",
+                "source_hint": "text_b5"
+              },
+              {
+                "cause_clause": "Aggressive investment in infrastructure capacity",
+                "source_hint": "table:total_net_additions_property_and_equipment_table"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "table:net_sales_by_product_group_table|sub:Advertising services (4)",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "Advertising Revenue",
+              "comparison": "2023 to 2025"
+            },
+            "trend_or_claim_sentence": "Advertising services revenue climbed from $46.9 billion in 2023 to $68.6 billion in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Expansion of sponsored ads, display, and video advertising programs",
+                "source_hint": "text_b5"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "narrative:Infrastructure of Fulfillment Networks",
+            "indicator_type": "narrative",
+            "trend": {
+              "direction": "unknown",
+              "focus_metric": "Fulfillment Efficiency",
+              "comparison": "operational qualitative"
+            },
+            "trend_or_claim_sentence": "Amazon's ability to drive revenue is tied to the successful optimization of its complex fulfillment network and data centers.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Reliance on a limited number of shipping companies and internal transportation systems",
+                "source_hint": "text_b7"
+              },
+              {
+                "cause_clause": "Requirement for substantial infrastructure capacity and personnel commitments",
+                "source_hint": "text_b10"
+              }
+            ]
+          }
+        ],
+        "entity_alignment": [
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:Net sales",
+            "query_domain": "segment revenue growth",
+            "document_entities": [
+              "North America segment",
+              "International segment"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 1.0,
+            "rationale": "Directly reports the revenue figures for the primary business segments requested in the question."
+          },
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:AWS - Net sales",
+            "query_domain": "AWS growth drivers",
+            "document_entities": [
+              "AWS",
+              "Amazon Web Services"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 1.0,
+            "rationale": "Reports the specific revenue for the AWS segment, which is a core part of the multi-segment inquiry."
+          },
+          {
+            "indicator_ref": "narrative:Infrastructure of Fulfillment Networks",
+            "query_domain": "fulfillment and retail expansion",
+            "document_entities": [
+              "fulfillment network",
+              "shipping companies"
+            ],
+            "alignment_relation": "contextual",
+            "confidence": 0.85,
+            "rationale": "Fulfillment infrastructure is a primary operational factor enabling the retail revenue growth mentioned in the query."
+          },
+          {
+            "indicator_ref": "table:net_sales_by_product_group_table|sub:Advertising services (4)",
+            "query_domain": "advertising and service revenue",
+            "document_entities": [
+              "Advertising services",
+              "sponsored ads"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 0.95,
+            "rationale": "Advertising is identified as a specific product group driving revenue across segments."
+          }
+        ],
+        "conflict_audit": {
+          "has_conflict": true,
+          "conflicts": [
+            {
+              "conflict_type": "numerical",
+              "involved_indicator_refs": [
+                "text_b4",
+                "text_b11"
+              ],
+              "description": "Text_b4 lists 2025 Sales and Marketing expense at $47,129 million, while Text_b11 lists it at $3,445 (units unspecified but likely different sub-scope).",
+              "resolution": "Prioritize the $47,129 million figure from text_b4 as it aligns with the consolidated statement of operations and the overall scale of revenue."
+            }
+          ],
+          "overall_resolution": "Segment growth is driven by massive infrastructure scaling ($96B for AWS) and high-margin services like advertising, despite intensely competitive local market dynamics."
+        },
+        "narrative_relations": [
+          {
+            "indicator_ref": "narrative:AWS Service Portfolio",
+            "proposition": "AWS offers a broad set of on-demand technology services including compute and AI",
+            "relation_type": "support",
+            "connective": "specifically",
+            "composed_sentence": "AWS offers a broad set of on-demand technology services including compute and AI, specifically enabling developers and enterprises to scale."
+          },
+          {
+            "indicator_ref": "narrative:Competitive Dynamics and Risk",
+            "proposition": "Amazon faces intense competition across all geographies and industries",
+            "relation_type": "contrast",
+            "connective": "despite",
+            "composed_sentence": "Amazon faces intense competition across all geographies and industries; despite this, it maintains significant revenue growth through its ecosystem loyalty."
+          }
+        ]
+      },
+      "source_stats": {
+        "narrative_count": 10,
+        "table_count": 5,
+        "table_row_count": 18
+      },
+      "indicator_id_map": {
+        "ref_to_id": {
+          "narrative:Primary Customer Ecosystem": "IND_1",
+          "narrative:Organizational Reporting Segments": "IND_2",
+          "narrative:Infrastructure of Fulfillment Networks": "IND_3",
+          "narrative:AWS Service Portfolio": "IND_4",
+          "narrative:Competitive Dynamics and Risk": "IND_5",
+          "narrative:Technical Labor Competition": "IND_6",
+          "narrative:Technology and Infrastructure R&D Initiatives": "IND_7",
+          "narrative:Advertising and Promotional Expenses 2025": "IND_8",
+          "narrative:Strategic Equity Investments in Rivian and Anthropic": "IND_9",
+          "narrative:Infrastructure Cost Allocation": "IND_10",
+          "table:other_income_expense_net_table": "IND_11",
+          "table:other_income_expense_net_table|sub:Marketable equity securities valuation gains (losses), net": "IND_11",
+          "table:other_income_expense_net_table|sub:Equity warrant valuation gains (losses), net": "IND_11",
+          "table:other_income_expense_net_table|sub:Reclassification adjustments for gains (losses) on available-for-sale debt securities, net": "IND_11",
+          "table:other_income_expense_net_table|sub:Upward adjustments relating to equity investments in private companies": "IND_11",
+          "table:other_income_expense_net_table|sub:Foreign currency gains (losses), net": "IND_11",
+          "table:other_income_expense_net_table|sub:Other, net": "IND_11",
+          "table:other_income_expense_net_table|sub:Total other income (expense), net": "IND_11",
+          "table:reportable_segments_reconciliation_table": "IND_12",
+          "table:reportable_segments_reconciliation_table|sub:Net sales": "IND_12",
+          "table:reportable_segments_reconciliation_table|sub:Operating income": "IND_12",
+          "table:reportable_segments_reconciliation_table|sub:AWS - Net sales": "IND_12",
+          "table:reportable_segments_reconciliation_table|sub:AWS - Operating income": "IND_12",
+          "table:reportable_segments_reconciliation_table|sub:Consolidated Net sales": "IND_12",
+          "table:net_sales_by_product_group_table": "IND_13",
+          "table:net_sales_by_product_group_table|sub:Online stores (1)": "IND_13",
+          "table:net_sales_by_product_group_table|sub:Third-party seller services (3)": "IND_13",
+          "table:net_sales_by_product_group_table|sub:Advertising services (4)": "IND_13",
+          "table:net_sales_by_country_table": "IND_14",
+          "table:net_sales_by_country_table|sub:United States": "IND_14",
+          "table:net_sales_by_country_table|sub:United Kingdom": "IND_14",
+          "table:total_net_additions_property_and_equipment_table": "IND_15",
+          "table:total_net_additions_property_and_equipment_table|sub:AWS (2)": "IND_15"
+        },
+        "id_to_name": {
+          "IND_1": "Primary Customer Ecosystem",
+          "IND_2": "Organizational Reporting Segments",
+          "IND_3": "Infrastructure of Fulfillment Networks",
+          "IND_4": "AWS Service Portfolio",
+          "IND_5": "Competitive Dynamics and Risk",
+          "IND_6": "Technical Labor Competition",
+          "IND_7": "Technology and Infrastructure R&D Initiatives",
+          "IND_8": "Advertising and Promotional Expenses 2025",
+          "IND_9": "Strategic Equity Investments in Rivian and Anthropic",
+          "IND_10": "Infrastructure Cost Allocation",
+          "IND_11": "other_income_expense_net_table",
+          "IND_12": "reportable_segments_reconciliation_table",
+          "IND_13": "net_sales_by_product_group_table",
+          "IND_14": "net_sales_by_country_table",
+          "IND_15": "total_net_additions_property_and_equipment_table"
+        }
+      },
+      "paragraph_plan": {
+        "opening_claim": "In terms of Strategic Business Segmentation and Market Ecosystem, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar.",
+        "evidence_chain": [
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:Net sales",
+            "indicator_id": "IND_12",
+            "sentence": "North America net sales increased from $352.8 billion in 2023 to $426.3 billion in 2025, reflecting steady expansion in the domestic retail ecosystem. Because Focus on selection, price, and convenience for consumers and Growth in advertising services such as sponsored ads and video.",
+            "score": 5.0
+          },
+          {
+            "indicator_ref": "table:reportable_segments_reconciliation_table|sub:AWS - Net sales",
+            "indicator_id": "IND_12",
+            "sentence": "AWS revenue grew significantly from $90.8 billion in 2023 to $128.7 billion in 2025. Because Increased demand for compute, storage, and artificial intelligence services and Aggressive investment in infrastructure capacity.",
+            "score": 5.0
+          },
+          {
+            "indicator_ref": "table:net_sales_by_product_group_table|sub:Advertising services (4)",
+            "indicator_id": "IND_13",
+            "sentence": "Advertising services revenue climbed from $46.9 billion in 2023 to $68.6 billion in 2025. Because Expansion of sponsored ads, display, and video advertising programs.",
+            "score": 4.16
+          },
+          {
+            "indicator_ref": "narrative:Infrastructure of Fulfillment Networks",
+            "indicator_id": "IND_3",
+            "sentence": "Amazon's ability to drive revenue is tied to the successful optimization of its complex fulfillment network and data centers. Because Reliance on a limited number of shipping companies and internal transportation systems and Requirement for substantial infrastructure capacity and personnel commitments.",
+            "score": 3.88
+          }
+        ],
+        "tension_and_resolution": "Segment growth is driven by massive infrastructure scaling ($96B for AWS) and high-margin services like advertising, despite intensely competitive local market dynamics.",
+        "closing_insight": "AWS offers a broad set of on-demand technology services including compute and AI, specifically enabling developers and enterprises to scale.",
+        "writing_constraints": {
+          "evidence_budget": 6,
+          "require_causal_connective": true,
+          "prefer_one_contrastive_sentence": true,
+          "avoid_list_style": true
+        },
+        "draft_paragraph": "In terms of Strategic Business Segmentation and Market Ecosystem, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar. North America net sales increased from $352.8 billion in 2023 to $426.3 billion in 2025, reflecting steady expansion in the domestic retail ecosystem. Because Focus on selection, price, and convenience for consumers and Growth in advertising services such as sponsored ads and video. AWS revenue grew significantly from $90.8 billion in 2023 to $128.7 billion in 2025. Because Increased demand for compute, storage, and artificial intelligence services and Aggressive investment in infrastructure capacity. Advertising services revenue climbed from $46.9 billion in 2023 to $68.6 billion in 2025. Because Expansion of sponsored ads, display, and video advertising programs. Amazon's ability to drive revenue is tied to the successful optimization of its complex fulfillment network and data centers. Because Reliance on a limited number of shipping companies and internal transportation systems and Requirement for substantial infrastructure capacity and personnel commitments. However, Segment growth is driven by massive infrastructure scaling ($96B for AWS) and high-margin services like advertising, despite intensely competitive local market dynamics. Therefore, AWS offers a broad set of on-demand technology services including compute and AI, specifically enabling developers and enterprises to scale."
+      }
+    },
+    {
+      "pillar": "Financial Performance Metrics and Cash Flow Management",
+      "operators": {
+        "causal_anchoring": [
+          {
+            "indicator_ref": "table:net_sales_table|sub:AWS",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "net sales",
+              "comparison": "2025 vs 2024"
+            },
+            "trend_or_claim_sentence": "AWS net sales increased significantly from $107,556 million in 2024 to $128,725 million in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "increased customer usage and sales volume",
+                "source_hint": "text_b11"
+              },
+              {
+                "cause_clause": "additional investments in technology infrastructure to support growth",
+                "source_hint": "text_b11"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "table:net_sales_table|sub:International",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "net sales",
+              "comparison": "2025 vs 2024"
+            },
+            "trend_or_claim_sentence": "International segment net sales grew by 13% to reach $161,894 million in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "expansion of country-focused online and physical stores",
+                "source_hint": "text_b18"
+              },
+              {
+                "cause_clause": "favorable impact from foreign exchange rates on reported growth",
+                "source_hint": "text_b10"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "narrative:Operating Cash Flow Increase",
+            "indicator_type": "narrative",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "operating cash flow",
+              "comparison": "2025 vs 2024"
+            },
+            "trend_or_claim_sentence": "Cash provided by operating activities increased by $23.6 billion, reaching $139.5 billion in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "growth in net income to $77.7 billion",
+                "source_hint": "text_b8"
+              },
+              {
+                "cause_clause": "higher depreciation and amortization adjustments of $65.8 billion",
+                "source_hint": "text_b8"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "narrative:Capital Expenditures (Infrastructure Focus)",
+            "indicator_type": "narrative",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "purchases of property and equipment",
+              "comparison": "2025 vs 2024"
+            },
+            "trend_or_claim_sentence": "Amazon significantly ramped up capital spending, with property and equipment purchases rising to $131.8 billion in 2025.",
+            "candidate_causes": [
+              {
+                "cause_clause": "increased investments in servers and networking equipment for AWS",
+                "source_hint": "text_b13"
+              },
+              {
+                "cause_clause": "expansion of the fulfillment and delivery infrastructure",
+                "source_hint": "text_b4"
+              }
+            ]
+          }
+        ],
+        "entity_alignment": [
+          {
+            "indicator_ref": "table:net_sales_table|sub:AWS",
+            "query_domain": "AWS revenue growth",
+            "document_entities": [
+              "AWS",
+              "Cloud Services"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 1.0,
+            "rationale": "Directly identifies the revenue for the AWS segment as requested by the query regarding segment growth."
+          },
+          {
+            "indicator_ref": "table:net_sales_table|sub:International",
+            "query_domain": "International revenue growth",
+            "document_entities": [
+              "International Segment",
+              "Retail"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 1.0,
+            "rationale": "Directly tracks revenue for the International segment."
+          },
+          {
+            "indicator_ref": "narrative:Revenue Recognition Methodology",
+            "query_domain": "revenue growth factors",
+            "document_entities": [
+              "Gross Revenue",
+              "Net Revenue",
+              "Third-party seller fees"
+            ],
+            "alignment_relation": "contextual",
+            "confidence": 0.85,
+            "rationale": "Explains the accounting basis (gross vs net) which defines how revenue is reported across different sales types."
+          },
+          {
+            "indicator_ref": "narrative:Market Risk Exposure Categories",
+            "query_domain": "revenue growth factors",
+            "document_entities": [
+              "Foreign exchange rates",
+              "Global economic conditions",
+              "Customer demand"
+            ],
+            "alignment_relation": "indirect",
+            "confidence": 0.75,
+            "rationale": "Lists external factors like inflation and FX rates that impact the underlying demand and reported value of sales."
+          }
+        ],
+        "conflict_audit": {
+          "has_conflict": true,
+          "conflicts": [
+            {
+              "conflict_type": "causal",
+              "involved_indicator_refs": [
+                "table:operating_income_table|sub:Consolidated",
+                "narrative:Q1 2026 Operating Income Guidance"
+              ],
+              "description": "Consolidated operating income grew significantly in 2025, but Q1 2026 guidance ($16.5B-$21.5B) suggests a potential sequential decline from recent performance levels.",
+              "resolution": "The guidance accounts for seasonally higher Q1 costs, including approximately $1 billion in incremental satellite network (Amazon Leo) costs and investments in quick commerce."
+            },
+            {
+              "conflict_type": "numerical",
+              "involved_indicator_refs": [
+                "table:yoy_percentage_growth_table|sub:International",
+                "table:yoy_percentage_growth_ex_fx_table|sub:International"
+              ],
+              "description": "The reported growth for the International segment (13%) differs from the FX-neutral growth rate (10%).",
+              "resolution": "The 300 basis point difference is attributed to the favorable impact of foreign exchange rate fluctuations during 2025."
+            }
+          ],
+          "overall_resolution": "Reported financial growth is robust across segments but is subject to non-recurring legal settlements, severance costs, and significant ongoing infrastructure investments that create volatility in operating margins."
+        },
+        "narrative_relations": [
+          {
+            "indicator_ref": "narrative:AWS Revenue Growth",
+            "proposition": "AWS revenue growth accelerated to 20% in 2025",
+            "relation_type": "cause",
+            "connective": "driven by",
+            "composed_sentence": "AWS revenue growth accelerated to 20% in 2025, driven by increased customer usage and expanded technology infrastructure investments."
+          },
+          {
+            "indicator_ref": "narrative:Capital Expenditures (Infrastructure Focus)",
+            "proposition": "Amazon increased technology and infrastructure spending",
+            "relation_type": "support",
+            "connective": "to facilitate",
+            "composed_sentence": "Amazon increased technology and infrastructure spending to facilitate long-term growth in AI, machine learning, and its cloud services business."
+          },
+          {
+            "indicator_ref": "narrative:Capitalization Policy for Satellite Network",
+            "proposition": "Operating income in early 2026 will be impacted by satellite network scaling",
+            "relation_type": "contrast",
+            "connective": "despite",
+            "composed_sentence": "Operating income in early 2026 will be impacted by satellite network scaling, despite the continued strong revenue performance in the retail and AWS segments."
+          }
+        ]
+      },
+      "source_stats": {
+        "narrative_count": 10,
+        "table_count": 5,
+        "table_row_count": 19
+      },
+      "indicator_id_map": {
+        "ref_to_id": {
+          "narrative:Revenue Recognition Methodology": "IND_1",
+          "narrative:Operating Cash Flow Increase": "IND_2",
+          "narrative:Capital Expenditures (Infrastructure Focus)": "IND_3",
+          "narrative:AWS Revenue Growth": "IND_4",
+          "narrative:Capitalization Policy for Satellite Network": "IND_5",
+          "narrative:Q1 2026 Net Sales Guidance": "IND_6",
+          "narrative:Q1 2026 Operating Income Guidance": "IND_7",
+          "narrative:Market Risk Exposure Categories": "IND_8",
+          "narrative:International Revenue Concentration": "IND_9",
+          "narrative:Intercompany Foreign Exchange Risk": "IND_10",
+          "table:net_sales_table": "IND_11",
+          "table:net_sales_table|sub:North America": "IND_11",
+          "table:net_sales_table|sub:International": "IND_11",
+          "table:net_sales_table|sub:AWS": "IND_11",
+          "table:net_sales_table|sub:Consolidated": "IND_11",
+          "table:yoy_percentage_growth_table": "IND_12",
+          "table:yoy_percentage_growth_table|sub:North America": "IND_12",
+          "table:yoy_percentage_growth_table|sub:International": "IND_12",
+          "table:yoy_percentage_growth_table|sub:AWS": "IND_12",
+          "table:yoy_percentage_growth_table|sub:Consolidated": "IND_12",
+          "table:yoy_percentage_growth_ex_fx_table": "IND_13",
+          "table:yoy_percentage_growth_ex_fx_table|sub:North America": "IND_13",
+          "table:yoy_percentage_growth_ex_fx_table|sub:International": "IND_13",
+          "table:yoy_percentage_growth_ex_fx_table|sub:AWS": "IND_13",
+          "table:yoy_percentage_growth_ex_fx_table|sub:Consolidated": "IND_13",
+          "table:operating_income_table": "IND_14",
+          "table:operating_income_table|sub:North America": "IND_14",
+          "table:operating_income_table|sub:International": "IND_14",
+          "table:operating_income_table|sub:AWS": "IND_14",
+          "table:operating_income_table|sub:Consolidated": "IND_14",
+          "table:consolidated_statements_of_operations": "IND_15",
+          "table:consolidated_statements_of_operations|sub:Net product sales": "IND_15",
+          "table:consolidated_statements_of_operations|sub:Net service sales": "IND_15",
+          "table:consolidated_statements_of_operations|sub:Operating income": "IND_15"
+        },
+        "id_to_name": {
+          "IND_1": "Revenue Recognition Methodology",
+          "IND_2": "Operating Cash Flow Increase",
+          "IND_3": "Capital Expenditures (Infrastructure Focus)",
+          "IND_4": "AWS Revenue Growth",
+          "IND_5": "Capitalization Policy for Satellite Network",
+          "IND_6": "Q1 2026 Net Sales Guidance",
+          "IND_7": "Q1 2026 Operating Income Guidance",
+          "IND_8": "Market Risk Exposure Categories",
+          "IND_9": "International Revenue Concentration",
+          "IND_10": "Intercompany Foreign Exchange Risk",
+          "IND_11": "net_sales_table",
+          "IND_12": "yoy_percentage_growth_table",
+          "IND_13": "yoy_percentage_growth_ex_fx_table",
+          "IND_14": "operating_income_table",
+          "IND_15": "consolidated_statements_of_operations"
+        }
+      },
+      "paragraph_plan": {
+        "opening_claim": "In terms of Financial Performance Metrics and Cash Flow Management, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar.",
+        "evidence_chain": [
+          {
+            "indicator_ref": "table:net_sales_table|sub:AWS",
+            "indicator_id": "IND_11",
+            "sentence": "AWS net sales increased significantly from $107,556 million in 2024 to $128,725 million in 2025. Because increased customer usage and sales volume and additional investments in technology infrastructure to support growth.",
+            "score": 5.0
+          },
+          {
+            "indicator_ref": "table:net_sales_table|sub:International",
+            "indicator_id": "IND_11",
+            "sentence": "International segment net sales grew by 13% to reach $161,894 million in 2025. Because expansion of country-focused online and physical stores and favorable impact from foreign exchange rates on reported growth.",
+            "score": 5.0
+          },
+          {
+            "indicator_ref": "narrative:Operating Cash Flow Increase",
+            "indicator_id": "IND_2",
+            "sentence": "Cash provided by operating activities increased by $23.6 billion, reaching $139.5 billion in 2025. Because growth in net income to $77.7 billion and higher depreciation and amortization adjustments of $65.8 billion.",
+            "score": 3.0
+          },
+          {
+            "indicator_ref": "narrative:Capital Expenditures (Infrastructure Focus)",
+            "indicator_id": "IND_3",
+            "sentence": "Amazon significantly ramped up capital spending, with property and equipment purchases rising to $131.8 billion in 2025. Because increased investments in servers and networking equipment for AWS and expansion of the fulfillment and delivery infrastructure.",
+            "score": 3.0
+          }
+        ],
+        "tension_and_resolution": "Reported financial growth is robust across segments but is subject to non-recurring legal settlements, severance costs, and significant ongoing infrastructure investments that create volatility in operating margins.",
+        "closing_insight": "AWS revenue growth accelerated to 20% in 2025, driven by increased customer usage and expanded technology infrastructure investments.",
+        "writing_constraints": {
+          "evidence_budget": 6,
+          "require_causal_connective": true,
+          "prefer_one_contrastive_sentence": true,
+          "avoid_list_style": true
+        },
+        "draft_paragraph": "In terms of Financial Performance Metrics and Cash Flow Management, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar. AWS net sales increased significantly from $107,556 million in 2024 to $128,725 million in 2025. Because increased customer usage and sales volume and additional investments in technology infrastructure to support growth. International segment net sales grew by 13% to reach $161,894 million in 2025. Because expansion of country-focused online and physical stores and favorable impact from foreign exchange rates on reported growth. Cash provided by operating activities increased by $23.6 billion, reaching $139.5 billion in 2025. Because growth in net income to $77.7 billion and higher depreciation and amortization adjustments of $65.8 billion. Amazon significantly ramped up capital spending, with property and equipment purchases rising to $131.8 billion in 2025. Because increased investments in servers and networking equipment for AWS and expansion of the fulfillment and delivery infrastructure. However, Reported financial growth is robust across segments but is subject to non-recurring legal settlements, severance costs, and significant ongoing infrastructure investments that create volatility in operating margins. Therefore, AWS revenue growth accelerated to 20% in 2025, driven by increased customer usage and expanded technology infrastructure investments."
+      }
+    },
+    {
+      "pillar": "Operational Infrastructure and Human Capital Management",
+      "operators": {
+        "causal_anchoring": [
+          {
+            "indicator_ref": "table:total_net_additions_property_and_equipment_table|sub:AWS (2)",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "Net Additions to Property and Equipment",
+              "comparison": "2023 vs 2025"
+            },
+            "trend_or_claim_sentence": "AWS property and equipment additions surged from $24.8 billion in 2023 to $96.5 billion in 2025, reflecting massive capital intensity.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Increased infrastructure spending to support artificial intelligence and machine learning initiatives",
+                "source_hint": "text_b8"
+              },
+              {
+                "cause_clause": "Growth in demand for global sales of compute, storage, and database services",
+                "source_hint": "text_b3"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "narrative:Global Workforce Scale",
+            "indicator_type": "narrative",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "Employee Headcount",
+              "comparison": "As of December 31, 2025"
+            },
+            "trend_or_claim_sentence": "Amazon's workforce reached approximately 1,576,000 employees to support its mission of being customer-centric and handling increased volume.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Intense competition for technical staff in artificial intelligence and machine learning",
+                "source_hint": "text_b9"
+              },
+              {
+                "cause_clause": "The need to supplement the workforce with independent contractors and temporary personnel to manage demand variations",
+                "source_hint": "text_b9"
+              }
+            ]
+          },
+          {
+            "indicator_ref": "table:property_and_equipment_net_table|sub:North America",
+            "indicator_type": "table",
+            "trend": {
+              "direction": "up",
+              "focus_metric": "Net Property and Equipment Value",
+              "comparison": "2023-2025"
+            },
+            "trend_or_claim_sentence": "Net property and equipment in North America grew steadily from $93.6 billion to $122.0 billion over a three-year period.",
+            "candidate_causes": [
+              {
+                "cause_clause": "Complexities in fulfillment networks requiring substantial infrastructure capacity and resource commitments",
+                "source_hint": "text_b10"
+              },
+              {
+                "cause_clause": "Expansion of physical, e-commerce, and omnichannel retail services",
+                "source_hint": "text_b10"
+              }
+            ]
+          }
+        ],
+        "entity_alignment": [
+          {
+            "indicator_ref": "narrative:AWS Commercial Arrangement and Chip Technology Infrastructure",
+            "query_domain": "AWS segment drivers",
+            "document_entities": [
+              "AWS",
+              "developers",
+              "enterprises"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 0.95,
+            "rationale": "Directly explains the service offerings (compute, storage, AI/ML) that drive revenue in the AWS segment."
+          },
+          {
+            "indicator_ref": "table:facilities_by_segment_table",
+            "query_domain": "different segments",
+            "document_entities": [
+              "North America",
+              "International",
+              "AWS"
+            ],
+            "alignment_relation": "direct",
+            "confidence": 1.0,
+            "rationale": "Provides the physical infrastructure footprint specifically broken down by the segments mentioned in the question."
+          },
+          {
+            "indicator_ref": "narrative:Strategic Acquisition Rationale for Technology and Human Capital",
+            "query_domain": "growth factors",
+            "document_entities": [
+              "acquisitions",
+              "mergers",
+              "intangible assets"
+            ],
+            "alignment_relation": "indirect",
+            "confidence": 0.85,
+            "rationale": "Acquisitions are a strategic lever for expanding technology and human capital, which are foundational for revenue growth."
+          }
+        ],
+        "conflict_audit": {
+          "has_conflict": true,
+          "conflicts": [
+            {
+              "conflict_type": "numerical",
+              "involved_indicator_refs": [
+                "table:total_net_additions_property_and_equipment_table",
+                "table:property_and_equipment_net_table"
+              ],
+              "description": "Consolidated net additions for 2025 ($142,352M) are significantly higher than the net increase in the total balance of property and equipment between 2024 and 2025 ($104,360M).",
+              "resolution": "The discrepancy is resolved by the 'depreciation and amortization expense' table, which shows $41,860M in 2025, accounting for the gap between gross additions and the net change in balance sheet values."
+            }
+          ],
+          "overall_resolution": "Segment growth is driven by massive capital flows (additions) that are partially offset by high depreciation rates of technology assets like servers and networking equipment."
+        },
+        "narrative_relations": [
+          {
+            "indicator_ref": "narrative:Infrastructure of Fulfillment Networks",
+            "proposition": "Amazon operates complex fulfillment and data center networks requiring substantial resource commitments.",
+            "relation_type": "cause",
+            "connective": "consequently",
+            "composed_sentence": "Amazon operates complex fulfillment and data center networks requiring substantial resource commitments; consequently, failure to optimize these networks can result in significant service interruptions and increased costs."
+          },
+          {
+            "indicator_ref": "narrative:Technology and Infrastructure R&D Initiatives",
+            "proposition": "Spending in technology and infrastructure is expected to increase to support AI and machine learning initiatives.",
+            "relation_type": "support",
+            "connective": "furthermore",
+            "composed_sentence": "Spending in technology and infrastructure is expected to increase to support AI and machine learning initiatives; furthermore, these investments are allocated to segments based on actual usage to enhance customer experience."
+          }
+        ]
+      },
+      "source_stats": {
+        "narrative_count": 10,
+        "table_count": 5,
+        "table_row_count": 23
+      },
+      "indicator_id_map": {
+        "ref_to_id": {
+          "narrative:Infrastructure of Fulfillment Networks": "IND_1",
+          "narrative:Global Workforce Scale": "IND_2",
+          "narrative:Talent Development Mechanisms": "IND_3",
+          "narrative:Human Capital Recruitment and Retention": "IND_4",
+          "narrative:Supply Chain Single-Source Risks (AI Infrastructure)": "IND_5",
+          "narrative:Technology and Infrastructure R&D Initiatives": "IND_6",
+          "narrative:AWS Commercial Arrangement and Chip Technology Infrastructure": "IND_7",
+          "narrative:Operating and Finance Lease Infrastructure Scope": "IND_8",
+          "narrative:Strategic Acquisition Rationale for Technology and Human Capital": "IND_9",
+          "narrative:Geographic Concentration of Property and Equipment": "IND_10",
+          "table:facilities_by_segment_table": "IND_11",
+          "table:facilities_by_segment_table|sub:North America": "IND_11",
+          "table:facilities_by_segment_table|sub:International": "IND_11",
+          "table:facilities_by_segment_table|sub:AWS": "IND_11",
+          "table:facilities_by_segment_table|sub:Total": "IND_11",
+          "table:total_segment_assets_table": "IND_12",
+          "table:total_segment_assets_table|sub:North America (1)": "IND_12",
+          "table:total_segment_assets_table|sub:International (1)": "IND_12",
+          "table:total_segment_assets_table|sub:AWS (2)": "IND_12",
+          "table:total_segment_assets_table|sub:Corporate": "IND_12",
+          "table:total_segment_assets_table|sub:Consolidated": "IND_12",
+          "table:property_and_equipment_net_table": "IND_13",
+          "table:property_and_equipment_net_table|sub:North America": "IND_13",
+          "table:property_and_equipment_net_table|sub:International": "IND_13",
+          "table:property_and_equipment_net_table|sub:AWS": "IND_13",
+          "table:property_and_equipment_net_table|sub:Corporate": "IND_13",
+          "table:property_and_equipment_net_table|sub:Consolidated": "IND_13",
+          "table:total_net_additions_property_and_equipment_table": "IND_14",
+          "table:total_net_additions_property_and_equipment_table|sub:North America (1)": "IND_14",
+          "table:total_net_additions_property_and_equipment_table|sub:International (1)": "IND_14",
+          "table:total_net_additions_property_and_equipment_table|sub:AWS (2)": "IND_14",
+          "table:total_net_additions_property_and_equipment_table|sub:Corporate": "IND_14",
+          "table:total_net_additions_property_and_equipment_table|sub:Consolidated": "IND_14",
+          "table:depreciation_and_amortization_expense_by_segment_table": "IND_15",
+          "table:depreciation_and_amortization_expense_by_segment_table|sub:North America": "IND_15",
+          "table:depreciation_and_amortization_expense_by_segment_table|sub:International": "IND_15",
+          "table:depreciation_and_amortization_expense_by_segment_table|sub:AWS": "IND_15",
+          "table:depreciation_and_amortization_expense_by_segment_table|sub:Consolidated": "IND_15"
+        },
+        "id_to_name": {
+          "IND_1": "Infrastructure of Fulfillment Networks",
+          "IND_2": "Global Workforce Scale",
+          "IND_3": "Talent Development Mechanisms",
+          "IND_4": "Human Capital Recruitment and Retention",
+          "IND_5": "Supply Chain Single-Source Risks (AI Infrastructure)",
+          "IND_6": "Technology and Infrastructure R&D Initiatives",
+          "IND_7": "AWS Commercial Arrangement and Chip Technology Infrastructure",
+          "IND_8": "Operating and Finance Lease Infrastructure Scope",
+          "IND_9": "Strategic Acquisition Rationale for Technology and Human Capital",
+          "IND_10": "Geographic Concentration of Property and Equipment",
+          "IND_11": "facilities_by_segment_table",
+          "IND_12": "total_segment_assets_table",
+          "IND_13": "property_and_equipment_net_table",
+          "IND_14": "total_net_additions_property_and_equipment_table",
+          "IND_15": "depreciation_and_amortization_expense_by_segment_table"
+        }
+      },
+      "paragraph_plan": {
+        "opening_claim": "In terms of Operational Infrastructure and Human Capital Management, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar.",
+        "evidence_chain": [
+          {
+            "indicator_ref": "table:total_net_additions_property_and_equipment_table|sub:AWS (2)",
+            "indicator_id": "IND_14",
+            "sentence": "AWS property and equipment additions surged from $24.8 billion in 2023 to $96.5 billion in 2025, reflecting massive capital intensity. Because Increased infrastructure spending to support artificial intelligence and machine learning initiatives and Growth in demand for global sales of compute, storage, and database services.",
+            "score": 3.2
+          },
+          {
+            "indicator_ref": "table:property_and_equipment_net_table|sub:North America",
+            "indicator_id": "IND_13",
+            "sentence": "Net property and equipment in North America grew steadily from $93.6 billion to $122.0 billion over a three-year period. Because Complexities in fulfillment networks requiring substantial infrastructure capacity and resource commitments and Expansion of physical, e-commerce, and omnichannel retail services.",
+            "score": 3.2
+          },
+          {
+            "indicator_ref": "narrative:Global Workforce Scale",
+            "indicator_id": "IND_2",
+            "sentence": "Amazon's workforce reached approximately 1,576,000 employees to support its mission of being customer-centric and handling increased volume. Because Intense competition for technical staff in artificial intelligence and machine learning and The need to supplement the workforce with independent contractors and temporary personnel to manage demand variations.",
+            "score": 3.0
+          }
+        ],
+        "tension_and_resolution": "Segment growth is driven by massive capital flows (additions) that are partially offset by high depreciation rates of technology assets like servers and networking equipment.",
+        "closing_insight": "Amazon operates complex fulfillment and data center networks requiring substantial resource commitments; consequently, failure to optimize these networks can result in significant service interruptions and increased costs.",
+        "writing_constraints": {
+          "evidence_budget": 6,
+          "require_causal_connective": true,
+          "prefer_one_contrastive_sentence": true,
+          "avoid_list_style": true
+        },
+        "draft_paragraph": "In terms of Operational Infrastructure and Human Capital Management, the key business mechanisms are best explained through linked trend-and-driver evidence across the most relevant domains in this pillar. AWS property and equipment additions surged from $24.8 billion in 2023 to $96.5 billion in 2025, reflecting massive capital intensity. Because Increased infrastructure spending to support artificial intelligence and machine learning initiatives and Growth in demand for global sales of compute, storage, and database services. Net property and equipment in North America grew steadily from $93.6 billion to $122.0 billion over a three-year period. Because Complexities in fulfillment networks requiring substantial infrastructure capacity and resource commitments and Expansion of physical, e-commerce, and omnichannel retail services. Amazon's workforce reached approximately 1,576,000 employees to support its mission of being customer-centric and handling increased volume. Because Intense competition for technical staff in artificial intelligence and machine learning and The need to supplement the workforce with independent contractors and temporary personnel to manage demand variations. However, Segment growth is driven by massive capital flows (additions) that are partially offset by high depreciation rates of technology assets like servers and networking equipment. Therefore, Amazon operates complex fulfillment and data center networks requiring substantial resource commitments; consequently, failure to optimize these networks can result in significant service interruptions and increased costs."
+      }
+    }
+  ]
+}

@@ -1,4 +1,180 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import type { Stage3GlobalSynthesis, Stage3Path } from '../../types/conclusion'
+
+const props = defineProps<{
+  visible: boolean
+  stage3?: Stage3GlobalSynthesis
+  originalQuestion?: string
+  finalAnswer?: string
+}>()
+
+const emit = defineEmits<{
+  close: []
+}>()
+
+const hoverFinalAnswer = ref(false)
+
+const paths = computed<Stage3Path[]>(() => {
+  const s: any = props.stage3
+  if (Array.isArray(s?.reasoning_paths) && s.reasoning_paths.length) return s.reasoning_paths
+  return props.stage3?.candidate_paths || []
+})
+
+const selectedPathId = computed(() => {
+  return props.stage3?.selected_path_id || props.stage3?.selected_path?.path_id || ''
+})
+
+const selectedPath = computed(() => {
+  const list = paths.value
+  if (!list.length) return null
+  if (selectedPathId.value) {
+    const hit = list.find((p) => p.path_id === selectedPathId.value)
+    if (hit) return hit
+  }
+  if (props.stage3?.selected_path) return props.stage3.selected_path
+  return list[0]
+})
+
+function isSelectedPath(p: Stage3Path) {
+  if (selectedPathId.value) return p.path_id === selectedPathId.value
+  return p === selectedPath.value
+}
+
+function scoreOf(p: Stage3Path) {
+  const vals = [p.coverage_score, p.coherence_score, p.faithfulness_score]
+    .filter((v): v is number => typeof v === 'number')
+  if (!vals.length) return 0
+  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100)
+}
+
+function closeModal() {
+  hoverFinalAnswer.value = false
+  emit('close')
+}
+</script>
+
+<template>
+  <div v-if="visible" class="modal-mask" @click.self="closeModal">
+    <div class="modal-card" :class="{ 'answer-sync': hoverFinalAnswer }">
+      <header class="modal-header">
+        <h3>ToT 推理路径：探索 · 评估 · 决策</h3>
+        <button class="close-btn" type="button" @click="closeModal">✕</button>
+      </header>
+
+      <div class="modal-body">
+        <section class="left-col">
+          <div class="stage-tag">探索起点</div>
+          <div class="question-node">
+            <div class="node-title">original_question</div>
+            <p>{{ originalQuestion || '-' }}</p>
+          </div>
+        </section>
+
+        <section class="middle-col">
+          <div class="stage-tag">reasoning_paths（评估）</div>
+          <div v-if="paths.length" class="paths-wrap">
+            <article
+              v-for="p in paths"
+              :key="p.path_id || p.title"
+              class="path-lane"
+              :class="{
+                selected: isSelectedPath(p),
+                muted: !isSelectedPath(p),
+                linked: hoverFinalAnswer && isSelectedPath(p),
+              }"
+            >
+              <div class="lane-head">
+                <b>{{ p.title || p.path_id || 'untitled path' }}</b>
+                <span class="score">{{ scoreOf(p) }}</span>
+              </div>
+
+              <div class="flow-row">
+                <template v-for="(n, i) in p.node_path || []" :key="`${p.path_id}-${n}-${i}`">
+                  <span class="flow-node" :class="{ resonant: hoverFinalAnswer && isSelectedPath(p) }">{{ n }}</span>
+                  <span v-if="i < (p.node_path?.length || 0) - 1" class="flow-seg" />
+                </template>
+              </div>
+
+              <p class="thesis">{{ p.core_thesis || '-' }}</p>
+
+              <div v-if="isSelectedPath(p) && p.why_it_wins" class="wins-box">
+                <span class="wins-label">why_it_wins</span>
+                <p>{{ p.why_it_wins }}</p>
+              </div>
+
+              <div v-if="hoverFinalAnswer && isSelectedPath(p)" class="back-link">⇢ 与 final_answer 正在联动</div>
+            </article>
+          </div>
+          <div v-else class="empty">未检测到 reasoning_paths / candidate_paths。</div>
+        </section>
+
+        <section class="right-col">
+          <div class="stage-tag">决策输出</div>
+          <div
+            class="answer-node"
+            @mouseenter="hoverFinalAnswer = true"
+            @mouseleave="hoverFinalAnswer = false"
+          >
+            <div class="node-title">final_answer</div>
+            <p>{{ finalAnswer || '-' }}</p>
+          </div>
+          <p class="hint">hover final_answer 将强化左侧所选路径的动态反馈。</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.modal-mask { position: fixed; inset: 0; background: rgba(2, 6, 23, .56); z-index: 1200; display: grid; place-items: center; }
+.modal-card { width: min(1680px, 98vw); height: min(92vh, 980px); background: #fff; border: 1px solid var(--color-border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid var(--color-border); }
+.close-btn { border: none; background: transparent; cursor: pointer; font-size: 1rem; }
+.modal-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 1.1fr) minmax(760px, 2.8fr) minmax(280px, 1.3fr); gap: .85rem; padding: .9rem; background: linear-gradient(135deg, #f8fafc 0%, #f9fbff 100%); }
+.stage-tag { display: inline-block; margin-bottom: .6rem; font-size: .73rem; color: #475569; background: #e2e8f0; border-radius: 999px; padding: .18rem .55rem; }
+
+.left-col, .middle-col, .right-col { min-height: 0; display: flex; flex-direction: column; }
+.middle-col { overflow: hidden; }
+.paths-wrap { overflow: auto; padding-right: .2rem; display: grid; gap: .7rem; }
+
+.question-node, .answer-node { border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; padding: .8rem; box-shadow: 0 6px 18px rgba(15, 23, 42, .06); }
+.answer-node { cursor: pointer; transition: .2s; }
+.answer-node:hover { border-color: #2563eb; box-shadow: 0 10px 22px rgba(37, 99, 235, .2); }
+.node-title { font-size: .74rem; color: #64748b; margin-bottom: .35rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.question-node p, .answer-node p { margin: 0; font-size: .82rem; color: #0f172a; line-height: 1.45; }
+
+.path-lane { border: 1px solid #dbe3ed; border-radius: 12px; background: #fff; padding: .65rem .75rem; }
+.path-lane.muted { opacity: .62; }
+.path-lane.selected { border-color: #f59e0b; box-shadow: 0 8px 18px rgba(245, 158, 11, .18); }
+.path-lane.linked { box-shadow: 0 0 0 2px rgba(37, 99, 235, .18), 0 10px 22px rgba(37, 99, 235, .15); }
+.lane-head { display: flex; justify-content: space-between; align-items: center; gap: .7rem; margin-bottom: .4rem; }
+.lane-head b { font-size: .82rem; color: #0f172a; }
+.score { font-size: .76rem; color: #0f172a; background: #e2e8f0; border-radius: 999px; padding: .1rem .45rem; }
+
+.flow-row { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; margin-bottom: .45rem; }
+.flow-node { font-size: .74rem; padding: .14rem .45rem; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; }
+.flow-seg { width: 26px; height: 2px; border-radius: 2px; background: repeating-linear-gradient(90deg, #94a3b8 0 8px, transparent 8px 12px); }
+.path-lane.selected .flow-seg { background: linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b); background-size: 220% 100%; animation: flow 1.15s linear infinite; }
+
+.thesis { margin: 0; font-size: .76rem; color: #334155; line-height: 1.42; }
+.wins-box { margin-top: .5rem; border-left: 3px solid #f59e0b; background: #fff7ed; padding: .4rem .5rem; border-radius: 6px; }
+.wins-label { display: inline-block; margin-bottom: .2rem; font-size: .72rem; color: #9a3412; font-weight: 700; }
+.wins-box p { margin: 0; font-size: .74rem; color: #7c2d12; line-height: 1.38; }
+.back-link { margin-top: .35rem; font-size: .72rem; color: #1d4ed8; font-weight: 600; }
+.hint { margin-top: .55rem; font-size: .74rem; color: #64748b; }
+.empty { color: #64748b; font-size: .8rem; }
+
+.answer-sync .question-node,
+.answer-sync .answer-node { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, .12); }
+.answer-sync .path-lane.selected .flow-node.resonant { animation: pulse 1.1s ease-in-out infinite; border-color: #2563eb; }
+
+@keyframes flow { to { background-position: -220% 0; } }
+@keyframes pulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+</style>
+
+<!-- LEGACY_OLD_STAGE3_MODAL
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { Stage3GlobalSynthesis, Stage3TreeEdge, Stage3TreeNode } from '../../types/conclusion'
 

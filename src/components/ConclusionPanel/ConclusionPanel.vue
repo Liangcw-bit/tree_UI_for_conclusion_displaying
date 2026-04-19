@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import type { FinalConclusion } from '../../types/conclusion'
 import FinalAnswer from './FinalAnswer.vue'
 import PillarSection from './PillarSection.vue'
-import Stage3TreeModal from './Stage3TreeModal.vue'
+import Stage3GraphModal from './Stage3GraphModal.vue'
 
 defineProps<{
   data: FinalConclusion | null
@@ -62,9 +62,11 @@ function closeStage3Modal() {
       />
     </div>
 
-    <Stage3TreeModal
+    <Stage3GraphModal
       :visible="stage3ModalVisible"
       :stage3="data?.stage3_global_synthesis"
+      :original-question="data?.original_question"
+      :final-answer="data?.final_answer"
       @close="closeStage3Modal"
     />
   </div>

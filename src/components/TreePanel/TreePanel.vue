@@ -75,10 +75,10 @@ const operatorByPillar = computed(() => {
     </div>
     <div v-if="data" class="tree-content">
       <div class="query-root">
-        <div class="query-node">
+        <!-- <div class="query-node">
           <span class="query-label">原始问题</span>
           <span class="query-text">{{ data.query }}</span>
-        </div>
+        </div> -->
         <div class="pillars-list">
           <TreeNode
             v-for="(pillar, i) in data.results"
