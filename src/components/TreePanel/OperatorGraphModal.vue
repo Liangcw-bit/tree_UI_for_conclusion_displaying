@@ -133,6 +133,16 @@ function hasObjectFields(v: any) {
   return !!v && typeof v === 'object' && !Array.isArray(v)
 }
 
+function formatScalar(v: unknown) {
+  if (v === null || v === undefined || v === '') return '-'
+  return String(v)
+}
+
+function objectEntries(v: unknown): Array<[string, unknown]> {
+  if (!hasObjectFields(v)) return []
+  return Object.entries(v as Record<string, unknown>)
+}
+
 function stopSimulation() {
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
@@ -682,19 +692,50 @@ onBeforeUnmount(() => {
               <summary>关系明细 #{{ i + 1 }}</summary>
               <div v-for="(val, k) in d" :key="k" class="card">
                 <template v-if="!hasObjectFields(val) && !Array.isArray(val)">
-                  <div class="kv-row"><span>{{ k }}</span><b>{{ val }}</b></div>
+                  <div class="kv-row"><span>{{ k }}</span><b>{{ formatScalar(val) }}</b></div>
+                </template>
+                <template v-else-if="k === 'candidate_causes' && Array.isArray(val)">
+                  <div class="kv-row"><span>{{ k }}</span><b>候选原因（{{ val.length }}）</b></div>
+                  <ul class="cause-list" v-if="val.length">
+                    <li v-for="(item, j) in val" :key="j" class="cause-item">
+                      <template v-if="hasObjectFields(item)">
+                        <div class="kv-row compact"><span>cause_clause</span><b>{{ formatScalar((item as any).cause_clause) }}</b></div>
+                        <div class="kv-row compact"><span>source_hint</span><b>{{ formatScalar((item as any).source_hint) }}</b></div>
+                      </template>
+                      <template v-else>
+                        <div class="desc">{{ formatScalar(item) }}</div>
+                      </template>
+                    </li>
+                  </ul>
                 </template>
                 <template v-else-if="Array.isArray(val)">
                   <div class="kv-row"><span>{{ k }}</span><b>数组({{ val.length }})</b></div>
                   <ul>
                     <li v-for="(item, j) in val" :key="j">
-                      {{ typeof item === 'object' ? JSON.stringify(item) : item }}
+                      <template v-if="hasObjectFields(item)">
+                        <div
+                          v-for="([ik, iv], ii) in objectEntries(item)"
+                          :key="`${j}-${ii}`"
+                          class="kv-row compact"
+                        >
+                          <span>{{ ik }}</span><b>{{ hasObjectFields(iv) || Array.isArray(iv) ? JSON.stringify(iv) : formatScalar(iv) }}</b>
+                        </div>
+                      </template>
+                      <template v-else>
+                        {{ formatScalar(item) }}
+                      </template>
                     </li>
                   </ul>
                 </template>
                 <template v-else>
                   <div class="kv-row"><span>{{ k }}</span><b>对象</b></div>
-                  <div class="desc">{{ JSON.stringify(val) }}</div>
+                  <div
+                    v-for="([ok, ov], oi) in objectEntries(val)"
+                    :key="`${k}-${oi}`"
+                    class="kv-row compact"
+                  >
+                    <span>{{ ok }}</span><b>{{ hasObjectFields(ov) || Array.isArray(ov) ? JSON.stringify(ov) : formatScalar(ov) }}</b>
+                  </div>
                 </template>
               </div>
             </details>
@@ -866,6 +907,8 @@ onBeforeUnmount(() => {
 .info-pane {
   padding: 0.75rem 1rem;
   overflow: auto;
+  scrollbar-gutter: stable;
+  min-width: 0;
 }
 
 .info-head-row {
@@ -874,6 +917,19 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 0.6rem;
   margin-bottom: 0.45rem;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.info-head-row h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .pin-btn {
@@ -906,10 +962,23 @@ onBeforeUnmount(() => {
   gap: 0.45rem;
   font-size: 0.78rem;
   margin-bottom: 0.25rem;
+  align-items: start;
 }
 
 .kv-row span {
   color: var(--color-text-muted);
+  word-break: break-word;
+}
+
+.kv-row b {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.kv-row.compact {
+  grid-template-columns: 96px 1fr;
+  font-size: 0.74rem;
 }
 
 .card {
@@ -930,6 +999,20 @@ onBeforeUnmount(() => {
   color: var(--color-text);
   margin-top: 0.2rem;
   word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cause-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+}
+
+.cause-item {
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  margin-bottom: 0.35rem;
+  background: #fff;
 }
 
 .table-wrap {

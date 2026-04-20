@@ -20,7 +20,7 @@ const emit = defineEmits<{
     >
       {{ text }}
     </p>
-    <div v-if="canOpenTree" class="hint">点击总结论可查看显式树形结构与路径高亮</div>
+    <!-- <div v-if="canOpenTree" class="hint">点击总结论可查看显式树形结构与路径高亮</div> -->
   </div>
 </template>
 

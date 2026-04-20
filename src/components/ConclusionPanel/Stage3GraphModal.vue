@@ -215,6 +215,64 @@ function formatValue(value: unknown): DetailValue {
   return text ? { kind: 'text', text } : { kind: 'empty' }
 }
 
+function primitiveText(value: unknown) {
+  if (value == null) return '—'
+  if (typeof value === 'string') return value.trim() || '—'
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
+}
+
+function structuredLines(value: unknown, depth = 0, lead = ''): string[] {
+  if (depth > 4) return [lead ? `${lead}: [max depth]` : '[max depth]']
+  if (value == null) return lead ? [`${lead}: —`] : ['—']
+
+  if (Array.isArray(value)) {
+    if (!value.length) return lead ? [`${lead}: []`] : ['[]']
+    const lines: string[] = []
+    if (lead) lines.push(`${lead}:`)
+    value.forEach((item, index) => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        const rec = item as Record<string, unknown>
+        const cause = typeof rec.cause_clause === 'string' ? rec.cause_clause : null
+        const hint = typeof rec.source_hint === 'string' ? rec.source_hint : null
+        if (cause || hint) {
+          lines.push(`  ${index + 1}. cause: ${cause || '—'}`)
+          lines.push(`     source_hint: ${hint || '—'}`)
+          return
+        }
+        lines.push(`  ${index + 1}.`)
+        lines.push(...structuredLines(rec, depth + 1).map((line) => `     ${line}`))
+        return
+      }
+      lines.push(`  ${index + 1}. ${primitiveText(item)}`)
+    })
+    return lines
+  }
+
+  if (typeof value === 'object') {
+    const rec = value as Record<string, unknown>
+    const entries = Object.entries(rec)
+    if (!entries.length) return lead ? [`${lead}: {}`] : ['{}']
+    const lines: string[] = []
+    if (lead) lines.push(`${lead}:`)
+    for (const [key, v] of entries) {
+      if (v == null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+        lines.push(`${key}: ${primitiveText(v)}`)
+      } else {
+        lines.push(...structuredLines(v, depth + 1, key))
+      }
+    }
+    return lines
+  }
+
+  return lead ? [`${lead}: ${primitiveText(value)}`] : [primitiveText(value)]
+}
+
+function formatStructuredValue(value: unknown): DetailValue {
+  const items = structuredLines(value).filter(Boolean)
+  return items.length ? { kind: 'list', items } : { kind: 'empty' }
+}
+
 function scoreText(value?: number) {
   return typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
 }
@@ -267,8 +325,8 @@ const nodeRows = computed<Row[]>(() => {
       'selection_score',
       'selected',
     ]),
-    { key: 'raw_source', value: formatValue(node.raw_source) },
-    { key: 'operator_source', value: formatValue(node.operator_source) },
+    { key: 'raw_source', value: formatStructuredValue(node.raw_source) },
+    { key: 'operator_source', value: formatStructuredValue(node.operator_source) },
   ]
 })
 
@@ -277,7 +335,7 @@ const edgeRows = computed<Row[]>(() => {
   if (!edge) return []
   return [
     ...rowsFromObject(edge, ['edge_id', 'from', 'to', 'relation_type', 'weight']),
-    { key: 'evidence', value: formatValue(edge.evidence) },
+    { key: 'evidence', value: formatStructuredValue(edge.evidence) },
   ]
 })
 
@@ -641,6 +699,12 @@ function closeModal() {
   emit('close')
 }
 
+function backToPath() {
+  activeNodeId.value = ''
+  activeEdgeId.value = ''
+  mode.value = 'path'
+}
+
 watch(
   () => props.visible,
   async (v) => {
@@ -708,6 +772,7 @@ void edgePath
 void nodeLabel
 void regionStyle
 void indicatorBadge
+void backToPath
 </script>
 
 <template>
@@ -845,6 +910,14 @@ void indicatorBadge
               <h4>{{ detailTitle }}</h4>
               <p>{{ detailSubtitle }}</p>
             </div>
+            <button
+              v-if="mode !== 'path' && activePath"
+              class="back-btn"
+              type="button"
+              @click="backToPath"
+            >
+              返回路径
+            </button>
           </div>
 
           <div class="detail-scroll">
@@ -953,8 +1026,9 @@ void indicatorBadge
 .path-glow.candidate { stroke: rgba(168,85,247,.16); stroke-width: 8; }
 .path-main { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .path-main.final { stroke: #facc15; stroke-width: 3.8; stroke-dasharray: 14 10; animation: flow 2.4s linear infinite; filter: drop-shadow(0 0 14px rgba(250,204,21,.32)); }
-.path-main.candidate { stroke: #a855f7; stroke-width: 2.6; stroke-dasharray: 7 6; }
+.path-main.candidate { stroke: #a855f7; stroke-width: 2.6; stroke-dasharray: 10 8; animation: flow-candidate 3s linear infinite; filter: drop-shadow(0 0 10px rgba(168,85,247,.25)); }
 @keyframes flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -128; } }
+@keyframes flow-candidate { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -116; } }
 .root-node { position: absolute; left: 50%; top: 28px; transform: translateX(-50%); z-index: 5; }
 .region { position: absolute; border-radius: 20px; border: 1px solid rgba(148,163,184,.2); background: linear-gradient(180deg, rgba(248,250,252,.78), rgba(255,255,255,.7)); overflow: hidden; transition: border-color .18s ease, box-shadow .18s ease, opacity .18s ease; z-index: 1; pointer-events: none; }
 .region::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.35), transparent 34%); pointer-events: none; }
