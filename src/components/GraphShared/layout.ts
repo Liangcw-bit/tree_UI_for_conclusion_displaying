@@ -35,11 +35,12 @@ export function buildPillarRegions(
   const innerPadX = options?.innerPadX ?? 16
   const innerPadBottom = options?.innerPadBottom ?? 14
 
-  const safeW = Math.max(width, 320)
-  const safeH = Math.max(height, 220)
+  const safeW = Math.max(width, 1)
+  const safeH = Math.max(height, 1)
   const total = pillars.length
-  const regionWidth = (safeW - pad * 2 - gap * (total - 1)) / total
-  const regionHeight = Math.max(safeH - top - bottom, 120)
+  const availableWidth = Math.max(safeW - pad * 2 - gap * (total - 1), total)
+  const regionWidth = availableWidth / total
+  const regionHeight = Math.max(safeH - top - bottom, 1)
 
   return pillars.map((p, i) => {
     const x = pad + i * (regionWidth + gap)

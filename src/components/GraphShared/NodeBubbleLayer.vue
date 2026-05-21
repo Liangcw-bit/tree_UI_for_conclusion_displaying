@@ -35,7 +35,7 @@ function scoreText(v: number | null | undefined) {
       :class="{ active: node.active, hovered: node.hovered, path: node.path, final: node.final, candidate: node.candidate }"
       type="button"
       :title="node.label"
-      :style="{ left: `${node.x}px`, top: `${node.y}px`, width: `${Math.round(node.r * 2)}px`, height: `${Math.round(node.r * 2)}px` }"
+      :style="{ left: `${node.x}px`, top: `${node.y}px`, width: `${Math.round(node.r * 2)}px`, height: `${Math.round(node.r * 2)}px`, fontSize: `${Math.max(7, Math.min(9, node.r * 0.42))}px` }"
       @click.stop="emit('nodeClick', node.id)"
       @mouseenter="emit('nodeEnter', node.id)"
       @mouseleave="emit('nodeLeave', node.id)"
@@ -64,6 +64,7 @@ function scoreText(v: number | null | undefined) {
 .indicator-card {
   position: absolute;
   border-radius: 999px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -72,15 +73,19 @@ function scoreText(v: number | null | undefined) {
   transform: translate(-50%, -50%);
   pointer-events: auto;
   padding: 0.16rem;
+  overflow: hidden;
 }
 .node-kicker {
-  font-size: 0.5rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  font-size: 1em;
   line-height: 1;
   font-weight: 700;
   white-space: nowrap;
 }
 .score {
-  font-size: 0.5rem;
+  font-size: 1em;
   line-height: 1;
   font-weight: 700;
 }

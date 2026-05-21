@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, watch, nextTick } from 'vue'
-import { ref } from 'vue'
 import type { IntermediateResult } from '../../types/intermediate'
 import type { IndicatorKey } from '../../composables/useIndicatorLink'
 import type { OperatorView, OperatorPillarResult } from '../../types/operator'

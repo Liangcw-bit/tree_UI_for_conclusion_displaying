@@ -209,7 +209,7 @@ function handleOpenSelectedOpsPopup(items: OperatorSelectableItem[]) {
 </script>
 
 <template>
-  <div class="result-view">
+  <div class="result-view" :class="{ 'graph-open': showGraphWorkspace }">
     <aside class="tree-aside">
       <TreePanel
         :data="intermediateData"
@@ -274,6 +274,10 @@ function handleOpenSelectedOpsPopup(items: OperatorSelectableItem[]) {
   background: var(--color-bg);
 }
 
+.result-view.graph-open {
+  grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1.28fr);
+}
+
 .tree-aside {
   position: relative;
   border-right: 1px solid var(--color-border);
@@ -285,6 +289,25 @@ function handleOpenSelectedOpsPopup(items: OperatorSelectableItem[]) {
 .conclusion-main {
   min-width: 0;
   overflow: hidden;
+}
+
+@media (max-width: 1500px) {
+  .result-view.graph-open {
+    grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.38fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .result-view,
+  .result-view.graph-open {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 42%) minmax(0, 58%);
+  }
+
+  .tree-aside {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
 }
 
 .selected-ops-popup {

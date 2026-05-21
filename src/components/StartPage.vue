@@ -11,7 +11,7 @@ const emit = defineEmits<{
   ready: [payload: { companyId: string; structure: any; uploadLogs?: string[] }]
 }>()
 
-const { get, postJson, buildUrl } = useBackend()
+const { get, buildUrl } = useBackend()
 
 const companies = ref<CompanyItem[]>([])
 const loadingCompanies = ref(false)

@@ -43,12 +43,12 @@ const operatorAlignment = computed(() => {
   return items.find((x) => x.indicator_ref === indicatorRef.value)
 })
 
-const operatorRelations = computed(() => {
+const operatorRelations = computed<any[]>(() => {
   const items = props.operatorItem?.operators?.narrative_relations || []
   return items.filter((x) => x.indicator_ref === indicatorRef.value)
 })
 
-const operatorConflicts = computed(() => {
+const operatorConflicts = computed<any[]>(() => {
   const items = props.operatorItem?.operators?.conflict_audit?.conflicts || []
   return items.filter((c) => (c.involved_indicator_refs || []).includes(indicatorRef.value))
 })

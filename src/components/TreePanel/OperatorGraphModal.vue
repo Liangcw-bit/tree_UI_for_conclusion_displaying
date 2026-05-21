@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { IntermediateResult } from '../../types/intermediate'
 import type { ConflictItem, OperatorPillarResult, OperatorView } from '../../types/operator'
 import PillarBoardLayer from '../GraphShared/PillarBoardLayer.vue'
 import { buildPillarRegions } from '../GraphShared/layout'
+import type { PillarRegion } from '../GraphShared/layout'
 
 type GraphNode = {
   id: string
@@ -82,6 +83,47 @@ const showOperatorSelectModal = ref(false)
 let rafId: number | null = null
 let dragNodeId: string | null = null
 
+function clamp(value: number, min: number, max: number) {
+  if (max < min) return (min + max) / 2
+  return Math.min(max, Math.max(min, value))
+}
+
+const graphScale = computed(() => {
+  return clamp(Math.min(width.value / 980, height.value / 640), 0.58, 1)
+})
+
+const layoutOptions = computed(() => {
+  const s = graphScale.value
+  return {
+    top: Math.round(50 + 20 * s),
+    pad: Math.round(6 + 6 * s),
+    gap: Math.round(6 + 6 * s),
+    bottom: Math.round(6 + 6 * s),
+    headerSpace: Math.round(40 + 12 * s),
+    innerPadX: Math.round(8 + 8 * s),
+    innerPadBottom: Math.round(8 + 6 * s),
+  }
+})
+
+const maxNodeLabelChars = computed(() => {
+  if (width.value < 700) return 12
+  if (width.value < 920) return 18
+  return 28
+})
+
+const showNodeLabels = computed(() => width.value >= 620 || nodes.value.length <= 14)
+
+function nodeRadius(type: GraphNode['indicatorType']) {
+  const base = type === 'table' ? 18 : 16
+  return Math.max(type === 'table' ? 11 : 10, Math.round(base * graphScale.value))
+}
+
+function displayNodeLabel(label: string) {
+  const max = maxNodeLabelChars.value
+  if (label.length <= max) return label
+  return `${label.slice(0, Math.max(max - 1, 1))}...`
+}
+
 const nodeMap = computed(() => {
   const m = new Map<string, GraphNode>()
   for (const n of nodes.value) m.set(n.id, n)
@@ -126,24 +168,17 @@ const pillarRegions = computed(() => buildPillarRegions(
   pillarKeys.value.map((name) => ({ key: name, title: name })),
   width.value,
   height.value,
-  {
-    top: 70,
-    pad: 12,
-    gap: 12,
-    bottom: 12,
-    headerSpace: 52,
-    innerPadX: 16,
-    innerPadBottom: 14,
-  },
+  layoutOptions.value,
 ))
 
 function pillarBoundsByName(pillar: string) {
   const r = pillarRegions.value.find((x) => x.key === pillar)
   if (r) return r
-  const x = 12
-  const y = 70
-  const w = Math.max(width.value - 24, 120)
-  const h = Math.max(height.value - 82, 120)
+  const opts = layoutOptions.value
+  const x = opts.pad
+  const y = opts.top
+  const w = Math.max(width.value - opts.pad * 2, 1)
+  const h = Math.max(height.value - opts.top - opts.bottom, 1)
   return {
     key: 'fallback',
     title: 'fallback',
@@ -151,10 +186,10 @@ function pillarBoundsByName(pillar: string) {
     y,
     width: w,
     height: h,
-    innerLeft: x + 16,
-    innerRight: x + w - 16,
-    innerTop: y + 52,
-    innerBottom: y + h - 14,
+    innerLeft: x + opts.innerPadX,
+    innerRight: x + w - opts.innerPadX,
+    innerTop: y + opts.headerSpace,
+    innerBottom: y + h - opts.innerPadBottom,
   }
 }
 
@@ -392,7 +427,7 @@ function buildGraph() {
         y: bounds.y + 30 + ni * 52 + Math.random() * 26,
         vx: 0,
         vy: 0,
-        radius: 16,
+        radius: nodeRadius('narrative'),
       })
     })
 
@@ -411,7 +446,7 @@ function buildGraph() {
         y: bounds.y + 96 + ti * 64 + Math.random() * 28,
         vx: 0,
         vy: 0,
-        radius: 18,
+        radius: nodeRadius('table'),
       })
     })
   })
@@ -569,13 +604,14 @@ function tick() {
 
   const centerX = width.value / 2
   const centerY = height.value / 2
-  const repulsionStrength = 4600
-  const edgeDesiredDistance = 190
+  const s = graphScale.value
+  const repulsionStrength = 4600 * s * s
+  const edgeDesiredDistance = clamp(Math.min(width.value / 4.8, height.value / 3.2), 82, 190)
   const edgeSpring = 0.0045
   const centerPull = 0.00055
   const anchorPullX = 0.0013
   const anchorPullY = 0.0009
-  const boundaryPadding = 8
+  const boundaryPadding = Math.max(4, Math.round(8 * s))
 
   for (let i = 0; i < ns.length; i++) {
     for (let j = i + 1; j < ns.length; j++) {
@@ -629,8 +665,8 @@ function tick() {
     n.vy *= 0.92
     n.x += n.vx
     n.y += n.vy
-    n.x = Math.max(bounds.x + n.radius + boundaryPadding, Math.min(bounds.x + bounds.width - n.radius - boundaryPadding, n.x))
-    n.y = Math.max(bounds.y + n.radius + boundaryPadding, Math.min(bounds.y + bounds.height - n.radius - boundaryPadding, n.y))
+    n.x = clamp(n.x, bounds.x + n.radius + boundaryPadding, bounds.x + bounds.width - n.radius - boundaryPadding)
+    n.y = clamp(n.y, bounds.y + n.radius + boundaryPadding, bounds.y + bounds.height - n.radius - boundaryPadding)
   }
 
   rafId = requestAnimationFrame(tick)
@@ -667,8 +703,8 @@ function onSvgMouseMove(ev: MouseEvent) {
   const n = findNode(dragNodeId)
   if (!n) return
   const bounds = pillarBoundsByName(n.pillar)
-  n.x = Math.max(bounds.x + n.radius + 4, Math.min(bounds.x + bounds.width - n.radius - 4, p.x))
-  n.y = Math.max(bounds.y + n.radius + 4, Math.min(bounds.y + bounds.height - n.radius - 4, p.y))
+  n.x = clamp(p.x, bounds.x + n.radius + 4, bounds.x + bounds.width - n.radius - 4)
+  n.y = clamp(p.y, bounds.y + n.radius + 4, bounds.y + bounds.height - n.radius - 4)
   n.vx = 0
   n.vy = 0
 }
@@ -677,12 +713,41 @@ function onSvgMouseUp() {
   dragNodeId = null
 }
 
+function fitNodesToPane(previousRegions: PillarRegion[]) {
+  const previousByKey = new Map(previousRegions.map((region) => [region.key, region]))
+  for (const n of nodes.value) {
+    const previous = previousByKey.get(n.pillar)
+    const next = pillarBoundsByName(n.pillar)
+    n.radius = nodeRadius(n.indicatorType)
+
+    if (previous) {
+      const previousWidth = Math.max(previous.width, 1)
+      const previousHeight = Math.max(previous.height, 1)
+      const rx = (n.x - previous.x) / previousWidth
+      const ry = (n.y - previous.y) / previousHeight
+      n.x = next.x + clamp(rx, 0, 1) * next.width
+      n.y = next.y + clamp(ry, 0, 1) * next.height
+    }
+
+    n.x = clamp(n.x, next.x + n.radius + 4, next.x + next.width - n.radius - 4)
+    n.y = clamp(n.y, next.y + n.radius + 4, next.y + next.height - n.radius - 4)
+    n.vx *= 0.4
+    n.vy *= 0.4
+  }
+}
+
 function measurePane() {
   const el = graphPaneRef.value
   if (!el) return
   const rect = el.getBoundingClientRect()
-  width.value = Math.max(Math.floor(rect.width), 640)
-  height.value = Math.max(Math.floor(rect.height), 420)
+  const nextWidth = Math.max(Math.floor(rect.width), 1)
+  const nextHeight = Math.max(Math.floor(rect.height), 1)
+  if (nextWidth === width.value && nextHeight === height.value) return
+
+  const previousRegions = pillarRegions.value.map((region) => ({ ...region }))
+  width.value = nextWidth
+  height.value = nextHeight
+  fitNodesToPane(previousRegions)
 }
 
 onMounted(() => {
@@ -697,9 +762,11 @@ watch(
   () => props.visible,
   (v) => {
     if (v) {
-      measurePane()
-      buildGraph()
-      startSimulation()
+      nextTick(() => {
+        measurePane()
+        buildGraph()
+        startSimulation()
+      })
     } else {
       stopSimulation()
       dragNodeId = null
@@ -823,14 +890,15 @@ onBeforeUnmount(() => {
                 @mouseleave="hoveredNodeId = null"
               />
               <text
+                v-if="showNodeLabels"
                 v-for="n in nodes"
                 :key="`${n.id}-label`"
                 :x="n.x"
-                :y="n.y + n.radius + 10"
+                :y="n.y + n.radius + Math.round(6 + 4 * graphScale)"
                 class="node-label"
                 pointer-events="none"
               >
-                {{ n.indicatorName }}
+                {{ displayNodeLabel(n.indicatorName) }}
               </text>
             </g>
           </svg>
@@ -1010,7 +1078,7 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 640px;
+  min-height: 0;
   background: #fff7fb;
   display: flex;
 }
@@ -1024,6 +1092,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  container-type: inline-size;
 }
 
 .modal-header {
@@ -1062,18 +1132,22 @@ onBeforeUnmount(() => {
 .legend {
   display: flex;
   gap: 0.8rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 0.55rem 1rem;
   border-bottom: 1px solid #d0d1e6;
   background: #ece7f2;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .legend-item {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.35rem;
   font-size: 0.75rem;
   color: #034e7b;
+  white-space: nowrap;
 }
 
 .dot {
@@ -1115,7 +1189,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 26%);
 }
 
 .graph-pane {
@@ -1123,6 +1197,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-right: 1px solid #d0d1e6;
   background: #fff7fb;
+  min-width: 0;
+  min-height: 0;
 }
 
 .pillar-rect {
@@ -1614,5 +1690,67 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   color: #034e7b;
   word-break: break-all;
+}
+
+@container (max-width: 1120px) {
+  .modal-header {
+    padding: 0.56rem 0.72rem;
+  }
+
+  .modal-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .legend {
+    gap: 0.55rem;
+    padding: 0.38rem 0.72rem;
+  }
+
+  .legend-item {
+    font-size: 0.68rem;
+  }
+
+  .modal-body {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 24%);
+  }
+
+  .info-pane {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .operator-select-body {
+    max-height: 180px;
+  }
+
+  .kv-row {
+    grid-template-columns: 88px 1fr;
+  }
+}
+
+@container (max-width: 960px) {
+  .modal-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(380px, 1fr) minmax(150px, 32%);
+  }
+
+  .graph-pane {
+    border-right: none;
+    border-bottom: 1px solid #d0d1e6;
+  }
+
+  .info-pane {
+    min-height: 0;
+    scrollbar-gutter: auto;
+  }
+
+  .operator-action-bar {
+    padding: 0.55rem 0.7rem;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .operator-selection-summary {
+    justify-content: space-between;
+  }
 }
 </style>

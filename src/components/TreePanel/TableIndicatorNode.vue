@@ -43,7 +43,7 @@ const operatorAlignmentItems = computed(() => {
   return items.filter((x) => x.indicator_ref?.startsWith(tableRefPrefix.value))
 })
 
-const operatorConflictItems = computed(() => {
+const operatorConflictItems = computed<any[]>(() => {
   const items = props.operatorItem?.operators?.conflict_audit?.conflicts || []
   return items.filter((c) =>
     (c.involved_indicator_refs || []).some((ref) => ref?.startsWith(tableRefPrefix.value))

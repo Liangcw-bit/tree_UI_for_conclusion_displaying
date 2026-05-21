@@ -90,6 +90,10 @@ function handleTreeIndicatorUnhover() {
       <main class="conclusion-main">
         <ConclusionPanel
           :data="conclusionData!"
+          :intermediate="intermediateData"
+          :operator-view="null"
+          :graph-workspace-visible="false"
+          active-graph-tab="operator"
           :is-annotation-highlighted="isAnnotationHighlighted"
           @annotation-hover="handleAnnotationHover"
           @annotation-unhover="handleAnnotationUnhover"

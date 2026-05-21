@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Stage3GlobalSynthesis, Stage3Path, Stage3TreeEdge, Stage3TreeNode } from '../../types/conclusion'
 import PillarBoardLayer from '../GraphShared/PillarBoardLayer.vue'
 import NodeBubbleLayer from '../GraphShared/NodeBubbleLayer.vue'
@@ -36,6 +36,11 @@ const hoveredPathId = ref<string | null>(null)
 const hoveredNodeId = ref<string | null>(null)
 const hoveredEdgeId = ref<string | null>(null)
 
+function clamp(value: number, min: number, max: number) {
+  if (max < min) return (min + max) / 2
+  return Math.min(max, Math.max(min, value))
+}
+
 const graph = computed(() => props.stage3?.tree_graph || null)
 const paths = computed<Stage3Path[]>(() => props.stage3?.candidate_paths || [])
 const selectedPathId = computed(() => props.stage3?.selected_path_id || props.stage3?.selected_path?.path_id || '')
@@ -61,17 +66,26 @@ const nodeById = computed<Record<string, Stage3TreeNode>>(() => {
 const canvasWidth = computed(() => Math.max(size.width, 1))
 const canvasHeight = computed(() => Math.max(size.height, 1))
 
+const graphScale = computed(() => {
+  return clamp(Math.min(canvasWidth.value / 1040, canvasHeight.value / 700), 0.58, 1)
+})
+
+const layoutOptions = computed(() => {
+  const s = graphScale.value
+  return {
+    top: Math.round(48 + 22 * s),
+    pad: Math.round(6 + 6 * s),
+    gap: Math.round(6 + 6 * s),
+    bottom: Math.round(6 + 6 * s),
+    headerSpace: Math.round(38 + 14 * s),
+    innerPadX: Math.round(8 + 8 * s),
+    innerPadBottom: Math.round(8 + 6 * s),
+  }
+})
+
 const regionLayouts = computed(() => {
   const pillars = pillarNodes.value.map((p) => ({ key: p.pillar || p.label || p.node_id, title: p.label || p.pillar || p.node_id }))
-  return buildPillarRegions(pillars, canvasWidth.value, canvasHeight.value, {
-    top: 70,
-    pad: 12,
-    gap: 12,
-    bottom: 12,
-    headerSpace: 52,
-    innerPadX: 16,
-    innerPadBottom: 14,
-  })
+  return buildPillarRegions(pillars, canvasWidth.value, canvasHeight.value, layoutOptions.value)
 })
 
 const nodePositions = computed<Record<string, Point>>(() => {
@@ -87,18 +101,24 @@ const nodePositions = computed<Record<string, Point>>(() => {
 
   regionLayouts.value.forEach((r) => {
     const list = grouped[r.key] || []
-    const cols = Math.max(Math.min(Math.ceil(Math.sqrt(list.length || 1)), 3), 1)
+    const rawInnerWidth = Math.max(r.innerRight - r.innerLeft, 1)
+    const rawInnerHeight = Math.max(r.innerBottom - r.innerTop, 1)
+    const maxColsByWidth = Math.max(Math.floor(rawInnerWidth / 86), 1)
+    const cols = Math.max(Math.min(Math.ceil(Math.sqrt(list.length || 1)), maxColsByWidth, 3), 1)
     const rows = Math.max(Math.ceil(list.length / cols), 1)
-    const innerWidth = Math.max(r.innerRight - r.innerLeft, 280)
-    const innerHeight = Math.max(r.innerBottom - r.innerTop, 240)
+    const innerWidth = rawInnerWidth
+    const innerHeight = rawInnerHeight
+    const cellWidth = innerWidth / cols
+    const cellHeight = innerHeight / rows
+    const densityScale = clamp(Math.min(cellWidth / 96, cellHeight / 88, graphScale.value), 0.56, 1)
     list.forEach((node, idx) => {
       const row = Math.floor(idx / cols)
       const col = idx % cols
       const score = typeof node.selection_score === 'number' ? node.selection_score : 3
       map[node.node_id] = {
-        x: r.innerLeft + (innerWidth / cols) * (col + 0.5),
-        y: r.innerTop + (innerHeight / rows) * (row + 0.5),
-        r: 16 + Math.max(Math.min(score, 6), 0) * 1.2,
+        x: r.innerLeft + cellWidth * (col + 0.5),
+        y: r.innerTop + cellHeight * (row + 0.5),
+        r: Math.max(10, Math.round((15 + clamp(score, 0, 6) * 1.1) * densityScale)),
       }
     })
   })
@@ -116,7 +136,7 @@ const nodePositions = computed<Record<string, Point>>(() => {
     map[node.node_id] = {
       x: cellWidth * (col + 1),
       y: cellHeight * (row + 1),
-      r: 20,
+      r: Math.max(10, Math.round(20 * graphScale.value)),
     }
   })
 
@@ -160,6 +180,31 @@ const pathPillarSet = computed(() => {
   return set
 })
 
+function unitVector(dx: number, dy: number, fallbackX: number, fallbackY: number) {
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist < 0.001) return { x: fallbackX, y: fallbackY }
+  return { x: dx / dist, y: dy / dist }
+}
+
+function curvedConnectorPath(a: Point, b: Point, lift: number, startPad = 1, endPad = 1) {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist < 1) return ''
+
+  const baseDir = unitVector(dx, dy, 1, 0)
+  const mx = (a.x + b.x) / 2
+  const my = (a.y + b.y) / 2 - lift
+  const startDir = unitVector(mx - a.x, my - a.y, baseDir.x, baseDir.y)
+  const endDir = unitVector(b.x - mx, b.y - my, baseDir.x, baseDir.y)
+  const sx = a.x + startDir.x * (a.r + startPad)
+  const sy = a.y + startDir.y * (a.r + startPad)
+  const ex = b.x - endDir.x * (b.r + endPad)
+  const ey = b.y - endDir.y * (b.r + endPad)
+
+  return `M ${sx} ${sy} C ${mx} ${my}, ${mx} ${my}, ${ex} ${ey}`
+}
+
 const pathSegments = computed(() => {
   const list = activePath.value?.node_path || []
   const segments: Array<{ from: string; to: string; d: string }> = []
@@ -172,16 +217,10 @@ const pathSegments = computed(() => {
     const dx = b.x - a.x
     const dy = b.y - a.y
     const dist = Math.sqrt(dx * dx + dy * dy) || 1
-    const ux = dx / dist
-    const uy = dy / dist
-    const sx = a.x + ux * (a.r + 1)
-    const sy = a.y + uy * (a.r + 1)
-    const ex = b.x - ux * (b.r + 2)
-    const ey = b.y - uy * (b.r + 2)
-    const mx = (sx + ex) / 2
-    const lift = Math.min(activePathSelected.value ? 74 : 58, Math.max(24, canvasHeight.value * 0.08))
-    const my = (sy + ey) / 2 - lift
-    segments.push({ from: list[i] as string, to: list[i + 1] as string, d: `M ${sx} ${sy} C ${mx} ${my}, ${mx} ${my}, ${ex} ${ey}` })
+    const maxLift = (activePathSelected.value ? 70 : 54) * graphScale.value
+    const lift = clamp(Math.min(maxLift, dist * 0.28, canvasHeight.value * 0.08), 14, maxLift)
+    const d = curvedConnectorPath(a, b, lift)
+    if (d) segments.push({ from: list[i] as string, to: list[i + 1] as string, d })
   }
   return segments
 })
@@ -193,16 +232,8 @@ function edgePath(edge: Stage3TreeEdge) {
   const dx = t.x - s.x
   const dy = t.y - s.y
   const dist = Math.sqrt(dx * dx + dy * dy) || 1
-  const ux = dx / dist
-  const uy = dy / dist
-  const startX = s.x + ux * (s.r + 1)
-  const startY = s.y + uy * (s.r + 1)
-  const endX = t.x - ux * (t.r + 2)
-  const endY = t.y - uy * (t.r + 2)
-  const mx = (startX + endX) / 2
-  const lift = Math.min(44, Math.max(20, canvasHeight.value * 0.06))
-  const my = (startY + endY) / 2 - lift
-  return `M ${startX} ${startY} C ${mx} ${my}, ${mx} ${my}, ${endX} ${endY}`
+  const lift = clamp(Math.min(42 * graphScale.value, dist * 0.22, canvasHeight.value * 0.06), 10, 42 * graphScale.value)
+  return curvedConnectorPath(s, t, lift)
 }
 
 function pathKey(path: Stage3Path, index: number) {
@@ -216,13 +247,15 @@ function isPathEdge(edge: Stage3TreeEdge) {
   return pathEdgeSet.value.has(`${edge.from}->${edge.to}`)
 }
 
-function focusPath(path: Stage3Path, index: number) {
+function focusPath(path: Stage3Path, index: number, event?: MouseEvent) {
   activePathId.value = pathKey(path, index)
   activeNodeId.value = ''
   activeEdgeId.value = ''
   hoveredNodeId.value = null
   hoveredEdgeId.value = null
   mode.value = 'path'
+  ;(event?.currentTarget as HTMLElement | null)?.blur()
+  nextTick(() => measure())
 }
 
 function focusNode(node: Stage3TreeNode) {
@@ -435,6 +468,7 @@ function measure() {
   const el = surfaceRef.value
   if (!el) return
   const rect = el.getBoundingClientRect()
+  if (rect.width < 1 || rect.height < 1) return
   size.width = Math.max(Math.floor(rect.width), 0)
   size.height = Math.max(Math.floor(rect.height), 0)
 }
@@ -463,6 +497,7 @@ watch(
     }
     activePathId.value = selectedPathKey.value || pathEntries.value[0]?.key || ''
     mode.value = 'path'
+    nextTick(() => measure())
   },
   { immediate: true },
 )
@@ -474,6 +509,7 @@ watch(
     if (!activePathId.value || !pathEntries.value.some((entry) => entry.key === activePathId.value)) {
       activePathId.value = selectedPathKey.value || pathEntries.value[0]?.key || ''
     }
+    nextTick(() => measure())
   },
 )
 </script>
@@ -515,7 +551,7 @@ watch(
                 class="path-tab"
                 :class="{ selected: isFinalSelectedPath(entry.path, entry.index), active: isActivePath(entry.path, entry.index), hovered: isHoveredPath(entry.path, entry.index) }"
                 type="button"
-                @click="focusPath(entry.path, entry.index)"
+                @click="(event) => focusPath(entry.path, entry.index, event)"
                 @mouseenter="hoveredPathId = entry.key"
                 @mouseleave="hoveredPathId = null"
               >
@@ -541,19 +577,25 @@ watch(
           </div>
 
           <template v-else>
-            <svg class="edge-svg" :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`" preserveAspectRatio="none">
+            <svg
+              class="edge-svg"
+              :width="canvasWidth"
+              :height="canvasHeight"
+              :viewBox="`0 0 ${canvasWidth} ${canvasHeight}`"
+              preserveAspectRatio="none"
+            >
               <defs>
-                <marker id="arrow-neutral" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                  <path d="M 0 0 L 7 3.5 L 0 7 z" fill="rgba(148,163,184,.9)" />
+                <marker id="arrow-neutral" markerWidth="9" markerHeight="9" refX="7.6" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M 0 0 L 9 4.5 L 0 9 z" fill="rgba(148,163,184,.9)" />
                 </marker>
-                <marker id="arrow-conflict" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                  <path d="M 0 0 L 7 3.5 L 0 7 z" fill="rgba(239,68,68,.95)" />
+                <marker id="arrow-conflict" markerWidth="9" markerHeight="9" refX="7.6" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M 0 0 L 9 4.5 L 0 9 z" fill="rgba(239,68,68,.95)" />
                 </marker>
-                <marker id="arrow-final" markerWidth="8" markerHeight="8" refX="6.6" refY="4" orient="auto" markerUnits="strokeWidth">
-                  <path d="M 0 0 L 8 4 L 0 8 z" fill="rgba(0,95,204,.98)" />
+                <marker id="arrow-final" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M 0 0 L 12 6 L 0 12 z" fill="rgba(0,95,204,.98)" />
                 </marker>
-                <marker id="arrow-candidate" markerWidth="8" markerHeight="8" refX="6.6" refY="4" orient="auto" markerUnits="strokeWidth">
-                  <path d="M 0 0 L 8 4 L 0 8 z" fill="rgba(168,85,247,.95)" />
+                <marker id="arrow-candidate" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M 0 0 L 12 6 L 0 12 z" fill="rgba(168,85,247,.95)" />
                 </marker>
               </defs>
 
@@ -652,7 +694,7 @@ watch(
                 <tr><th>path</th><th>coverage</th><th>coherence</th><th>faithfulness</th></tr>
               </thead>
               <tbody>
-                <tr v-for="entry in pathEntries" :key="entry.key" :class="{ selected: isFinalSelectedPath(entry.path, entry.index), active: isActivePath(entry.path, entry.index) }" @click="focusPath(entry.path, entry.index)">
+                <tr v-for="entry in pathEntries" :key="entry.key" :class="{ selected: isFinalSelectedPath(entry.path, entry.index), active: isActivePath(entry.path, entry.index) }" @click="(event) => focusPath(entry.path, entry.index, event)">
                   <td><div class="name"><b>{{ entry.path.title || entry.path.path_id }}</b><small>{{ entry.path.path_id || entry.key }}</small></div></td>
                   <td>{{ scoreText(entry.path.coverage_score) }}</td>
                   <td>{{ scoreText(entry.path.coherence_score) }}</td>
@@ -669,8 +711,8 @@ watch(
 </template>
 
 <style scoped>
-.page-shell { position: relative; width: 100%; height: 100%; min-height: 640px; display: flex; flex-direction: column; background: #f7f9fc; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .7rem 1rem; border-bottom: 1px solid #b3bfce; background: #e2e8f0; }
+.page-shell { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: #f7f9fc; container-type: inline-size; }
+.page-header { position: relative; z-index: 20; flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .7rem 1rem; border-bottom: 1px solid #b3bfce; background: #e2e8f0; }
 .header-left { display: flex; align-items: flex-start; gap: .8rem; }
 .header-actions { display: flex; align-items: center; gap: .6rem; }
 .page-header h3 { margin: .18rem 0 0; font-size: 1.08rem; }
@@ -683,24 +725,24 @@ watch(
 .back-btn { padding: .52rem .78rem; border-radius: 12px; background: #dbe2ea; color: #0f172a; font-size: .78rem; white-space: nowrap; }
 .top-back { align-self: center; }
 .close-btn:hover, .back-btn:hover, .path-tab:hover, .graph-node:hover, .score-table tbody tr:hover { transform: translateY(-1px); }
-.page-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0; }
-.graph-panel, .detail-panel { min-height: 0; display: flex; flex-direction: column; }
-.toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .55rem; padding: .55rem 1rem; border-bottom: 1px solid #b3bfce; background: #e2e8f0; }
+.page-body { flex: 1; min-width: 0; min-height: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 28%); gap: 0; }
+.graph-panel, .detail-panel { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.toolbar { position: relative; z-index: 12; flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .55rem; padding: .5rem .8rem; border-bottom: 1px solid #b3bfce; background: #e2e8f0; }
 .toolbar-left { min-width: 0; display: flex; flex-direction: column; gap: .55rem; }
-.path-tabs { display: flex; gap: .6rem; flex-wrap: wrap; }
-.path-tab { min-width: 118px; border-radius: 12px; padding: .42rem .5rem; border: 1px solid #b3bfce; background: #f7f9fc; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: .2rem; box-shadow: 0 6px 18px rgba(15,23,42,.08); }
+.path-tabs { display: flex; gap: .5rem; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: .1rem; scrollbar-width: thin; }
+.path-tab { flex: 0 0 112px; min-width: 112px; border-radius: 12px; padding: .38rem .46rem; border: 1px solid #b3bfce; background: #f7f9fc; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: .2rem; box-shadow: 0 6px 18px rgba(15,23,42,.08); }
 .path-tab.selected { border-color: #005fcc; background: #dbeafe; box-shadow: 0 0 0 1px rgba(0,95,204,.24), 0 12px 28px rgba(0,95,204,.16); }
 .path-tab.active { box-shadow: 0 0 0 1px rgba(15,23,42,.22), 0 14px 30px rgba(15,23,42,.16); }
 .path-tab.hovered { box-shadow: 0 0 0 1px rgba(138,63,252,.32), 0 0 0 4px rgba(138,63,252,.12); }
 .path-tab strong { font-size: .74rem; line-height: 1.25; color: #0f172a; }
 .path-tab span { display: flex; justify-content: space-between; gap: .35rem; color: #64748b; font-size: .66rem; }
-.legend { display: flex; align-items: center; gap: .85rem; flex-wrap: wrap; color: #475569; font-size: .72rem; }
-.legend span { display: inline-flex; align-items: center; gap: .4rem; }
+.legend { display: flex; align-items: center; gap: .65rem; flex-wrap: nowrap; overflow-x: auto; max-width: 38%; color: #475569; font-size: .68rem; scrollbar-width: thin; }
+.legend span { display: inline-flex; align-items: center; flex: 0 0 auto; gap: .35rem; white-space: nowrap; }
 .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
 .dot.selected { background: #005fcc; box-shadow: 0 0 0 4px rgba(0,95,204,.2); }
 .dot.candidate { background: #8a3ffc; box-shadow: 0 0 0 4px rgba(138,63,252,.2); }
 .dot.neutral { background: #5b6b7f; }
-.surface { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: 0; border: none; border-right: 1px solid #b3bfce; background: #f7f9fc; }
+.surface { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; contain: layout paint; border-radius: 0; border: none; border-right: 1px solid #b3bfce; background: #f7f9fc; }
 .empty { position: absolute; inset: 0; display: grid; place-items: center; gap: .4rem; text-align: center; color: #64748b; }
 .empty strong { color: #0f172a; }
 .edge-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: auto; }
@@ -741,13 +783,13 @@ watch(
 .graph-node.hovered { border-color: rgba(14,165,233,.45); box-shadow: 0 0 0 2px rgba(56,189,248,.2), 0 10px 22px rgba(14,116,144,.15); transform: translate(-50%, -50%) scale(1.05); }
 .graph-node.path.final { border-color: rgba(0,95,204,.56); box-shadow: 0 0 0 1px rgba(0,95,204,.22), 0 10px 20px rgba(0,95,204,.12); }
 .graph-node.path.candidate { border-color: rgba(168,85,247,.48); box-shadow: 0 0 0 1px rgba(168,85,247,.2), 0 10px 20px rgba(168,85,247,.12); }
-.detail-panel { border-left: none; padding: .75rem 1rem; background: #f7f9fc; }
-.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .05rem 0 .25rem .25rem; }
+.detail-panel { box-sizing: border-box; display: grid; grid-template-rows: auto minmax(0, 1fr); align-content: stretch; border-left: none; padding: .75rem 1rem; background: #f7f9fc; }
+.detail-head { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: .05rem 0 .25rem .25rem; }
 .detail-head h4 { margin: .16rem 0 0; font-size: .98rem; }
 .detail-head p { margin: .18rem 0 0; color: #64748b; font-size: .76rem; }
-.detail-scroll { min-height: 0; overflow: auto; padding-right: .2rem; display: flex; flex-direction: column; gap: .85rem; scrollbar-gutter: stable both-edges; }
+.detail-scroll { width: 100%; height: 100%; max-height: 100%; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-right: .2rem; display: flex; flex-direction: column; gap: .85rem; scrollbar-gutter: stable both-edges; }
 .summary, .score-table-card, .row { border: 1px solid #b3bfce; border-radius: 16px; background: #ffffff; box-shadow: 0 10px 26px rgba(15,23,42,.08); }
-.summary { padding: .92rem; }
+.summary { min-width: 0; padding: .92rem; }
 .summary.selected { border-color: rgba(0,95,204,.28); background: linear-gradient(180deg, rgba(219,234,254,.84), rgba(255,255,255,.95)); }
 .summary-top { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
 .summary-top h5 { margin: .28rem 0 0; font-size: .92rem; line-height: 1.45; }
@@ -761,15 +803,15 @@ watch(
 .score-grid span { font-size: .72rem; color: #64748b; }
 .score-grid strong { color: #0f172a; font-size: .92rem; }
 .rows { display: flex; flex-direction: column; gap: .7rem; }
-.row { padding: .76rem .78rem; display: flex; flex-direction: column; gap: .42rem; }
+.row { min-width: 0; padding: .76rem .78rem; display: flex; flex-direction: column; gap: .42rem; }
 .row-key { color: #475569; font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
-.value { color: #0f172a; font-size: .82rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.value { min-width: 0; color: #0f172a; font-size: .82rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
 .value.empty { color: #94a3b8; }
 .value.text, .value.json { background: rgba(248,250,252,.96); border-radius: 12px; padding: .68rem .76rem; border: 1px solid rgba(226,232,240,.9); }
-.value.json { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: .72rem; line-height: 1.55; overflow: auto; }
+.value.json { margin: 0; max-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: .72rem; line-height: 1.55; overflow-x: auto; overflow-y: visible; }
 .value.list { margin: 0; padding-left: 1rem; }
 .value.list li + li { margin-top: .18rem; }
-.score-table-card { padding: .86rem .92rem .95rem; }
+.score-table-card { min-width: 0; overflow-x: auto; padding: .86rem .92rem .95rem; }
 .score-table-title { font-size: .84rem; font-weight: 700; margin-bottom: .66rem; color: #0f172a; }
 .score-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
 .score-table th, .score-table td { padding: .72rem .42rem; border-bottom: 1px solid rgba(226,232,240,.96); text-align: left; }
@@ -804,7 +846,22 @@ watch(
   cursor: not-allowed;
   box-shadow: none;
 }
-@media (max-width: 1400px) { .page-body { grid-template-columns: 1fr; } .detail-panel { border-left: none; border-top: 1px solid #d0d1e6; padding-top: 1rem; } .surface { min-height: 720px; } }
+@media (max-width: 1400px) {
+  .page-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(360px, 1fr) minmax(220px, 38%);
+  }
+
+  .detail-panel {
+    border-left: none;
+    border-top: 1px solid #d0d1e6;
+    padding-top: 0.7rem;
+  }
+
+  .surface {
+    min-height: 0;
+  }
+}
 
 @media (max-width: 980px) {
   .page-header,
@@ -828,7 +885,7 @@ watch(
   }
 
   .surface {
-    min-height: 620px;
+    min-height: 0;
   }
 
   .detail-scroll {
@@ -854,11 +911,81 @@ watch(
   }
 
   .surface {
-    min-height: 540px;
+    min-height: 0;
   }
 
   .detail-head h4 {
     font-size: 0.9rem;
+  }
+}
+
+@container (max-width: 1120px) {
+  .page-header {
+    padding: 0.56rem 0.75rem;
+  }
+
+  .page-header h3 {
+    font-size: 0.98rem;
+  }
+
+  .page-header p {
+    font-size: 0.74rem;
+  }
+
+  .toolbar {
+    margin-bottom: 0;
+    padding: 0.42rem 0.68rem;
+    gap: 0.55rem;
+  }
+
+  .path-tab {
+    flex-basis: 104px;
+    min-width: 104px;
+    box-shadow: none;
+  }
+
+  .legend {
+    max-width: 32%;
+    gap: 0.5rem;
+    font-size: 0.64rem;
+  }
+
+  .detail-panel {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .detail-scroll {
+    gap: 0.6rem;
+  }
+
+  .summary,
+  .score-table-card,
+  .row {
+    border-radius: 12px;
+  }
+}
+
+@container (max-width: 940px) {
+  .page-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(420px, 1fr) minmax(180px, 34%);
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .legend {
+    max-width: 100%;
+  }
+
+  .surface {
+    border-right: none;
+    border-bottom: 1px solid #b3bfce;
+  }
+
+  .detail-panel {
+    border-top: none;
   }
 }
 </style>
